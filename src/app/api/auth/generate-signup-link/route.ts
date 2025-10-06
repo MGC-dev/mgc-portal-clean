@@ -3,6 +3,8 @@ import { createAdminSupabaseClient } from "@/lib/supabase-server";
 import { Resend } from "resend";
 import { hashCode } from "@/lib/otp-store";
 
+export const runtime = "nodejs";
+
 // POST /api/auth/generate-signup-link
 // Body: { email: string, password: string, metadata?: Record<string, any>, emailTemplateParams?: Record<string, any> }
 // Returns: { ok: boolean }
@@ -18,14 +20,24 @@ export async function POST(request: Request) {
     const admin = createAdminSupabaseClient();
 
     // Create the user without sending Supabase confirmation, we will use custom OTP
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: metadata || {},
-      email_confirm: false,
-    } as any);
-    if (createError) {
-      return NextResponse.json({ error: createError.message }, { status: 400 });
+    let created: any;
+    try {
+      const { data, error: createError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        user_metadata: metadata || {},
+        email_confirm: false,
+      } as any);
+      if (createError) {
+        return NextResponse.json({ error: createError.message }, { status: 400 });
+      }
+      created = data;
+    } catch (e: any) {
+      const isConnRefused = e?.cause?.code === "ECONNREFUSED" || `${e?.message || ""}`.includes("fetch failed");
+      const msg = isConnRefused
+        ? "Supabase API unreachable (ECONNREFUSED). Check network connectivity and NEXT_PUBLIC_SUPABASE_URL."
+        : e?.message || "Failed to create user";
+      return NextResponse.json({ error: msg }, { status: isConnRefused ? 503 : 500 });
     }
 
     // Generate a 6-digit OTP code and store it server-side (Supabase table)
