@@ -29,7 +29,12 @@ export async function POST(request: Request) {
         email_confirm: false,
       } as any);
       if (createError) {
-        return NextResponse.json({ error: createError.message }, { status: 400 });
+        const msg = createError?.message || "Failed to create user";
+        const isConnRefused = msg.includes("fetch failed") || (createError as any)?.cause?.code === "ECONNREFUSED";
+        return NextResponse.json(
+          { error: isConnRefused ? "Supabase API unreachable (ECONNREFUSED). Check network connectivity and NEXT_PUBLIC_SUPABASE_URL." : msg },
+          { status: isConnRefused ? 503 : 400 }
+        );
       }
       created = data;
     } catch (e: any) {
