@@ -6,21 +6,25 @@ export async function middleware(request: NextRequest) {
     request,
   });
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // If env vars are missing, avoid crashing middleware
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next();
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          // Do NOT attempt to mutate request cookies in middleware; set on response only
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -29,9 +33,14 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: any = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data?.user ?? null;
+  } catch (e) {
+    // Prevent middleware crash if Supabase auth fetch fails
+    console.error("Middleware auth getUser failed:", e);
+  }
 
   // Redirect unauthenticated users trying to access mgdashboard to /login
   if (!user && request.nextUrl.pathname.startsWith("/mgdashboard")) {
