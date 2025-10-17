@@ -136,18 +136,23 @@ function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    console.log("Incoming Retell payload:", JSON.stringify(body));
+    console.log("🟢 Incoming Retell payload:", JSON.stringify(body));
 
     if (!body || Object.keys(body).length === 0)
       return NextResponse.json({ success: true, message: "Empty payload ignored" });
 
     const event = body.event || body.status || null;
+    console.log("🟢 Event type:", event);
+
+    // Only proceed for completed/analyzed calls
     if (!["call_completed", "call_analyzed"].includes(event)) {
-      console.log(`Event "${event}" ignored.`);
+      console.log(`🟡 Event "${event}" ignored.`);
       return NextResponse.json({ success: true, message: `Event "${event}" ignored` });
     }
 
     const callId = body.call_id || body.call?.call_id || body.call?.id;
+    console.log("🟢 Call ID:", callId);
+
     const transcriptArray: TranscriptEntry[] =
       body.call?.transcript_object ||
       body.call?.conversation ||
@@ -159,7 +164,7 @@ export async function POST(req: NextRequest) {
     const transcript =
       (typeof body.transcript === "string" && body.transcript) ||
       body.call?.transcript ||
-      (transcriptArray.length ? transcriptArray.map(t => t.content || "").join("\n") : "");
+      transcriptArray.map(t => t.content || "").join("\n");
 
     const userName = finalDetails.name || "Unknown";
     const userEmail = finalDetails.email || null;
@@ -167,26 +172,37 @@ export async function POST(req: NextRequest) {
     const location = finalDetails.location || null;
     const industry = finalDetails.industry || null;
 
-    console.log("Final extracted data:", { userName, userEmail, company, location, industry });
+    console.log("🟢 Extracted user details:", { userName, userEmail, company, location, industry });
+    await sendEmail("aksuba7@gmail.com", "Test Email", "<p>Hello from SendGrid</p>");
 
-    // --- Refresh Zoho token ---
+
+    // Refresh Zoho token
     const token = accessToken || (await refreshZohoToken());
-    if (!token) return NextResponse.json({ error: "No Zoho token" }, { status: 500 });
+    if (!token) {
+      console.error("❌ No Zoho token available");
+      return NextResponse.json({ error: "No Zoho token" }, { status: 500 });
+    }
 
-    // --- Check if lead exists ---
+    // Skip if lead already exists
     if (callId && (await leadExistsByCallId(callId, token))) {
+      console.log("🟡 Lead already exists for this call ID");
       return NextResponse.json({ success: true, message: "Already processed (call id)" });
     }
 
-    // --- Create Lead in Zoho ---
-    const description = `Industry: ${industry || ""}\nLocation: ${location || ""}\n\nTranscript:\n${transcript}`;
-    const leadResp = await createLead(
-      { lastName: userName, company, email: userEmail, description, country: location, callId },
-      token
-    );
-    console.log("Lead create response:", leadResp);
+    // Create Zoho lead
+    try {
+      const description = `Industry: ${industry || ""}\nLocation: ${location || ""}\n\nTranscript:\n${transcript}`;
+      const leadResp = await createLead(
+        { lastName: userName, company, email: userEmail, description, country: location, callId },
+        token
+      );
+      console.log("🟢 Zoho lead created:", leadResp);
+    } catch (err) {
+      console.error("❌ Failed to create Zoho lead:", err);
+      return NextResponse.json({ error: "Zoho lead creation failed", details: err }, { status: 500 });
+    }
 
-    // --- Send Emails AFTER lead creation ---
+    // Send emails AFTER successful lead creation
     const summaryHtml = `
       <h3>Retell Call Summary</h3>
       <p><b>Call ID:</b> ${callId || "N/A"}</p>
@@ -199,23 +215,32 @@ export async function POST(req: NextRequest) {
       <pre>${transcript}</pre>
     `;
 
-    // Send Admin Email
-    await sendEmail(ADMIN_EMAIL, `Retell Call ${callId || ""} Summary`, summaryHtml);
+    try {
+      await sendEmail(ADMIN_EMAIL, `Retell Call ${callId || ""} Summary`, summaryHtml);
+      console.log("✅ Admin email sent");
+    } catch (err) {
+      console.error("❌ Admin email failed:", err);
+    }
 
-    // Send User Email
     if (userEmail) {
-      await sendEmail(
-        userEmail,
-        "Thanks — we received your intake",
-        `<p>Hi ${userName},</p><p>Thank you for sharing your details. Our team will get back to you shortly.</p>`
-      );
+      try {
+        await sendEmail(
+          userEmail,
+          "Thanks — we received your intake",
+          `<p>Hi ${userName},</p><p>Thank you for sharing your details. Our team will get back to you shortly.</p>`
+        );
+        console.log("✅ User email sent");
+      } catch (err) {
+        console.error("❌ User email failed:", err);
+      }
     } else {
-      console.warn("No user email found - cannot send user email.");
+      console.warn("⚠️ No user email found - skipping user email");
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Webhook error:", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    console.error("❌ Webhook handler error:", err);
+    return NextResponse.json({ error: "Internal error", details: err }, { status: 500 });
   }
 }
+
