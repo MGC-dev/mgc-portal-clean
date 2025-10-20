@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import sgMail from "@sendgrid/mail";
 
 let accessToken: string | null = null;
 
 // --- CONFIG ---
 const RETELL_CALL_FIELD_API_NAME = process.env.RETELL_CALL_FIELD_API_NAME || "Retell_Call_ID";
+const ZOHO_CAMPAIGNS_AUTH_TOKEN = process.env.ZOHO_CAMPAIGNS_AUTH_TOKEN!;
+const ZOHO_CAMPAIGNS_LIST_KEY = process.env.ZOHO_CAMPAIGNS_LIST_KEY!;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "aksuba7@gmail.com";
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!); // SendGrid API Key
 
-// --- Helpers ---
+// --- Helper: Refresh Zoho CRM token ---
 async function refreshZohoToken() {
   const res = await fetch("https://accounts.zoho.com/oauth/v2/token", {
     method: "POST",
@@ -24,10 +24,14 @@ async function refreshZohoToken() {
   const text = await res.text();
   try {
     const data = text ? JSON.parse(text) : {};
-    if (data.access_token) accessToken = data.access_token;
-    else console.error("Failed to refresh token", data);
+    if (data.access_token) {
+      accessToken = data.access_token;
+      console.log("✅ Zoho token refreshed");
+    } else {
+      console.error("❌ Failed to refresh token", data);
+    }
   } catch (err) {
-    console.error("Failed to parse token response:", text);
+    console.error("❌ Failed to parse token response:", text);
   }
   return accessToken;
 }
@@ -36,28 +40,36 @@ async function safeJson(res: Response) {
   const text = await res.text();
   try {
     return text ? JSON.parse(text) : {};
-  } catch (err) {
-    console.warn("safeJson: invalid JSON response:", text);
+  } catch {
     return { raw: text };
   }
 }
 
-// --- SendGrid Email Function ---
-async function sendEmail(to: string, subject: string, html: string) {
-  if (!to) return { error: "Missing recipient email" };
+// --- Zoho Campaigns: Add Contact ---
+async function addToZohoCampaignsList(email: string, name: string) {
+  if (!email) return { error: "Missing email for Zoho Campaigns" };
+
   try {
-    const msg = {
-      to,
-      from: "mgcentral@mgconsultingfirm.com", // Verified sender in SendGrid
-      subject,
-      html,
-    };
-    const res = await sgMail.send(msg);
-    console.log("✅ Email sent via SendGrid:", res);
-    return { success: true, res };
+    const response = await fetch("https://campaigns.zoho.com/api/v1.1/json/listsubscribers/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        resfmt: "JSON",
+        listkey: ZOHO_CAMPAIGNS_LIST_KEY,
+        contactinfo: JSON.stringify({
+          "Contact Email": email,
+          "First Name": name,
+        }),
+        authtoken: ZOHO_CAMPAIGNS_AUTH_TOKEN,
+      }),
+    });
+
+    const data = await response.json();
+    console.log("✅ Added to Zoho Campaigns:", data);
+    return data;
   } catch (err: any) {
-    console.error("❌ SendGrid email error:", err);
-    return { success: false, error: err.message || String(err) };
+    console.error("❌ Failed to add to Zoho Campaigns:", err);
+    return { error: err.message || String(err) };
   }
 }
 
@@ -127,7 +139,6 @@ function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
       const ind = text.match(/(?:industry|sector)[:\s]*(?:is|in)?\s*([a-zA-Z0-9 &]+)/i);
       if (ind) result.industry = ind[1].trim();
     }
-    if (result.name && result.email && result.company && result.location && result.industry) break;
   }
   return result;
 }
@@ -138,21 +149,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     console.log("🟢 Incoming Retell payload:", JSON.stringify(body));
 
-    if (!body || Object.keys(body).length === 0)
-      return NextResponse.json({ success: true, message: "Empty payload ignored" });
-
     const event = body.event || body.status || null;
-    console.log("🟢 Event type:", event);
-
-    // Only proceed for completed/analyzed calls
     if (!["call_completed", "call_analyzed"].includes(event)) {
-      console.log(`🟡 Event "${event}" ignored.`);
       return NextResponse.json({ success: true, message: `Event "${event}" ignored` });
     }
 
     const callId = body.call_id || body.call?.call_id || body.call?.id;
-    console.log("🟢 Call ID:", callId);
-
     const transcriptArray: TranscriptEntry[] =
       body.call?.transcript_object ||
       body.call?.conversation ||
@@ -172,75 +174,28 @@ export async function POST(req: NextRequest) {
     const location = finalDetails.location || null;
     const industry = finalDetails.industry || null;
 
-    console.log("🟢 Extracted user details:", { userName, userEmail, company, location, industry });
-    await sendEmail("aksuba7@gmail.com", "Test Email", "<p>Hello from SendGrid</p>");
-
-
-    // Refresh Zoho token
     const token = accessToken || (await refreshZohoToken());
-    if (!token) {
-      console.error("❌ No Zoho token available");
-      return NextResponse.json({ error: "No Zoho token" }, { status: 500 });
-    }
+    if (!token) return NextResponse.json({ error: "No Zoho token" }, { status: 500 });
 
-    // Skip if lead already exists
     if (callId && (await leadExistsByCallId(callId, token))) {
-      console.log("🟡 Lead already exists for this call ID");
-      return NextResponse.json({ success: true, message: "Already processed (call id)" });
+      return NextResponse.json({ success: true, message: "Already processed" });
     }
 
-    // Create Zoho lead
-    try {
-      const description = `Industry: ${industry || ""}\nLocation: ${location || ""}\n\nTranscript:\n${transcript}`;
-      const leadResp = await createLead(
-        { lastName: userName, company, email: userEmail, description, country: location, callId },
-        token
-      );
-      console.log("🟢 Zoho lead created:", leadResp);
-    } catch (err) {
-      console.error("❌ Failed to create Zoho lead:", err);
-      return NextResponse.json({ error: "Zoho lead creation failed", details: err }, { status: 500 });
-    }
+    const description = `Industry: ${industry || ""}\nLocation: ${location || ""}\n\nTranscript:\n${transcript}`;
+    const leadResp = await createLead(
+      { lastName: userName, company, email: userEmail, description, country: location, callId },
+      token
+    );
+    console.log("🟢 Zoho lead created:", leadResp);
 
-    // Send emails AFTER successful lead creation
-    const summaryHtml = `
-      <h3>Retell Call Summary</h3>
-      <p><b>Call ID:</b> ${callId || "N/A"}</p>
-      <p><b>Name:</b> ${userName}</p>
-      <p><b>Email:</b> ${userEmail}</p>
-      <p><b>Company:</b> ${company}</p>
-      <p><b>Location:</b> ${location}</p>
-      <p><b>Industry:</b> ${industry}</p>
-      <hr/>
-      <pre>${transcript}</pre>
-    `;
-
-    try {
-      await sendEmail(ADMIN_EMAIL, `Retell Call ${callId || ""} Summary`, summaryHtml);
-      console.log("✅ Admin email sent");
-    } catch (err) {
-      console.error("❌ Admin email failed:", err);
-    }
-
+    // ✅ Add to Zoho Campaigns
     if (userEmail) {
-      try {
-        await sendEmail(
-          userEmail,
-          "Thanks — we received your intake",
-          `<p>Hi ${userName},</p><p>Thank you for sharing your details. Our team will get back to you shortly.</p>`
-        );
-        console.log("✅ User email sent");
-      } catch (err) {
-        console.error("❌ User email failed:", err);
-      }
-    } else {
-      console.warn("⚠️ No user email found - skipping user email");
+      await addToZohoCampaignsList(userEmail, userName);
     }
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("❌ Webhook handler error:", err);
-    return NextResponse.json({ error: "Internal error", details: err }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
-

@@ -1,37 +1,23 @@
-// app/api/send-smtp-test/route.ts
-import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+// app/api/test-email/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import sgMail from "@sendgrid/mail";
 
-export async function GET() {
-  // 1. Create transporter using Zoho SMTP
-  const transporter = nodemailer.createTransport({
-    host: "smtp.zoho.com",
-    port: 465,          // SSL port
-    secure: true,       // true for SSL
-    auth: {
-      user: "mgcentral@mgconsultingfirm.com",
-      pass: process.env.SMTP_PASS || "rMqEB7tae3pm", // store in .env
-    },
-  });
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
+export async function GET(req: NextRequest) {
   try {
-    // 2. Verify connection
-    await transporter.verify();
+    const msg = {
+      to: "your-email@example.com",               // replace with your email
+      from: "mgcentral@mgconsultingfirm.com",    // verified sender
+      subject: "Test SendGrid Email",
+      html: "<p>Hello from SendGrid (App Router)</p>",
+    };
 
-    // 3. Send test email
-    const info = await transporter.sendMail({
-      from: '"MG Consulting" <mgcentral@mgconsultingfirm.com>',
-      to: "aksuba7@gmail.com",
-      subject: "Zoho SMTP Test ✅",
-      text: "SMTP connection verified and working safely in production!",
-    });
-
-    return NextResponse.json({ success: true, messageId: info.messageId });
+    await sgMail.send(msg);
+    console.log("✅ Email sent successfully via SendGrid");
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    // Return detailed error for debugging
-    return NextResponse.json(
-      { success: false, error: error.message, stack: error.stack },
-      { status: 500 }
-    );
+    console.error("❌ SendGrid Error:", error);
+    return NextResponse.json({ success: false, error: error?.message || String(error) }, { status: 500 });
   }
 }
