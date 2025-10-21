@@ -3,15 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 let accessToken: string | null = null;
 
 // --- CONFIG ---
-const RETELL_CALL_FIELD_API_NAME =
-  process.env.RETELL_CALL_FIELD_API_NAME || "Retell_Call_ID";
+const RETELL_CALL_FIELD_API_NAME = process.env.RETELL_CALL_FIELD_API_NAME || "Retell_Call_ID";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "aksuba7@gmail.com";
 const ZOHO_CAMPAIGNS_AUTH_TOKEN = process.env.ZOHO_CAMPAIGNS_AUTH_TOKEN!;
 const ZOHO_CAMPAIGNS_LIST_KEY = process.env.ZOHO_CAMPAIGNS_LIST_KEY!;
 
-// ✅ Helper: Refresh Zoho CRM Token
-async function refreshZohoToken() {
-  console.log("🔁 Refreshing Zoho CRM access token...");
+// --- Helper: Refresh Zoho CRM Token ---
+async function refreshZohoToken(): Promise<string> {
   const res = await fetch("https://accounts.zoho.com/oauth/v2/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -23,21 +21,20 @@ async function refreshZohoToken() {
     }),
   });
 
-  const text = await res.text();
-  try {
-    const data = text ? JSON.parse(text) : {};
-    if (data.access_token) {
-      accessToken = data.access_token;
-      console.log("✅ Zoho token refreshed successfully.");
-    } else {
-      console.error("❌ Failed to refresh Zoho token:", data);
-    }
-  } catch (err) {
-    console.error("❌ Failed to parse Zoho token response:", text);
+  const data = await res.json().catch(() => ({}));
+
+  if (data.access_token) {
+  accessToken = data.access_token;
+  const token: string = data.access_token; // local variable ensures type string
+  console.log("✅ Zoho token refreshed:", token.slice(0, 5) + "...");
+  return token;
+  }else {
+    console.error("❌ Failed to refresh Zoho token:", data);
+    throw new Error("Failed to refresh Zoho token");
   }
-  return accessToken;
 }
 
+// --- Safe JSON helper ---
 async function safeJson(res: Response) {
   const text = await res.text();
   try {
@@ -47,74 +44,51 @@ async function safeJson(res: Response) {
   }
 }
 
-// ✅ Zoho Campaigns: Add Contact + Send Email
+// --- Zoho Campaigns: Add contact & send email ---
 async function addToZohoCampaignsAndSendEmail(email: string, name: string) {
   if (!email) return { error: "Missing email for Zoho Campaigns" };
 
   console.log("📨 Adding contact to Zoho Campaigns & triggering email...");
 
   try {
-    const response = await fetch(
-      "https://campaigns.zoho.com/api/v1.1/json/listsubscribers/add",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          resfmt: "JSON",
-          listkey: ZOHO_CAMPAIGNS_LIST_KEY,
-          contactinfo: JSON.stringify({
-            "Contact Email": email,
-            "First Name": name,
-          }),
-          authtoken: ZOHO_CAMPAIGNS_AUTH_TOKEN,
+    const response = await fetch("https://campaigns.zoho.com/api/v1.1/json/listsubscribers/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        resfmt: "JSON",
+        listkey: ZOHO_CAMPAIGNS_LIST_KEY,
+        contactinfo: JSON.stringify({
+          "Contact Email": email,
+          "First Name": name,
         }),
-      }
-    );
+        authtoken: ZOHO_CAMPAIGNS_AUTH_TOKEN,
+      }),
+    });
 
     const data = await response.json();
     console.log("✅ Zoho Campaigns response:", data);
-    if (data.code === "SUCCESS") {
-      console.log(`✅ Email triggered successfully via Zoho Campaigns to ${email}`);
-    } else {
-      console.warn("⚠️ Zoho Campaigns did not confirm email send:", data);
-    }
     return data;
   } catch (err: any) {
-    console.error("❌ Zoho Campaigns add/send error:", err);
+    console.error("❌ Zoho Campaigns error:", err);
     return { error: err.message || String(err) };
   }
 }
 
-// ✅ Check if lead already exists in Zoho CRM
+// --- Check if lead already exists in Zoho CRM ---
 async function leadExistsByCallId(callId: string, token: string) {
-  console.log("🔍 Checking if lead exists for Call ID:", callId);
   if (!callId) return false;
   const criteria = `(${RETELL_CALL_FIELD_API_NAME}:equals:${callId})`;
-  const url = `https://www.zohoapis.com/crm/v2/Leads/search?criteria=${encodeURIComponent(
-    criteria
-  )}`;
-  const resp = await fetch(url, {
-    headers: { Authorization: `Zoho-oauthtoken ${token}` },
-  });
+  const url = `https://www.zohoapis.com/crm/v2/Leads/search?criteria=${encodeURIComponent(criteria)}`;
+  const resp = await fetch(url, { headers: { Authorization: `Zoho-oauthtoken ${token}` } });
   const data = await safeJson(resp);
-  const exists = Array.isArray(data.data) && data.data.length > 0;
-  console.log(exists ? "⚠️ Lead already exists." : "✅ No existing lead found.");
-  return exists;
+  return Array.isArray(data.data) && data.data.length > 0;
 }
 
-// ✅ Create a new lead in Zoho CRM
+// --- Create new lead in Zoho CRM ---
 async function createLead(
-  payload: {
-    lastName: string;
-    company: string | null;
-    email: string | null;
-    description: string;
-    country?: string;
-    callId?: string;
-  },
+  payload: { lastName: string; company?: string | null; email?: string | null; description: string; country?: string; callId?: string },
   token: string
 ) {
-  console.log("🧾 Creating new lead in Zoho CRM...");
   const leadObj: any = {
     Last_Name: payload.lastName || "Unknown",
     Company: payload.company || "Retell Lead",
@@ -127,23 +101,17 @@ async function createLead(
 
   const res = await fetch("https://www.zohoapis.com/crm/v2/Leads", {
     method: "POST",
-    headers: {
-      Authorization: `Zoho-oauthtoken ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Zoho-oauthtoken ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ data: [leadObj] }),
   });
 
-  const data = await safeJson(res);
-  console.log("✅ Zoho CRM create lead response:", data);
-  return data;
+  return await safeJson(res);
 }
 
-// ✅ Extract user data from transcript
+// --- Extract user data from transcript ---
 type TranscriptEntry = { role?: string; content?: string };
 
 function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
-  console.log("🔎 Extracting details from transcript...");
   const result: any = { name: null, email: null, company: null, location: null, industry: null };
   if (!Array.isArray(transcriptArray) || transcriptArray.length === 0) return result;
 
@@ -169,67 +137,58 @@ function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
       const ind = text.match(/(?:industry|sector)[:\s]*(?:is|in)?\s*([a-zA-Z0-9 &]+)/i);
       if (ind) result.industry = ind[1].trim();
     }
+    if (result.name && result.email && result.company && result.location && result.industry) break;
   }
-  console.log("✅ Extracted details:", result);
+
   return result;
 }
 
-// ✅ MAIN HANDLER
+// --- Main webhook handler ---
 export async function POST(req: NextRequest) {
   try {
-    console.log("🟢 Retell webhook triggered...");
+    console.log("🟢 Retell webhook triggered");
     const body = await req.json().catch(() => ({}));
-    console.log("📩 Incoming payload:", JSON.stringify(body, null, 2));
-
     const event = body.event || body.status || null;
+
     if (!["call_completed", "call_analyzed"].includes(event)) {
       console.log(`ℹ️ Ignored event: ${event}`);
       return NextResponse.json({ success: true, message: `Event "${event}" ignored` });
     }
 
     const callId = body.call_id || body.call?.call_id || body.call?.id;
-    console.log("📞 Call ID:", callId);
-
     const transcriptArray: TranscriptEntry[] =
-      body.call?.transcript_object ||
-      body.call?.conversation ||
-      body.call?.call_analysis?.conversation ||
-      body.call?.call_analysis?.messages ||
-      [];
+      body.call?.transcript_object || body.call?.conversation || body.call?.call_analysis?.conversation || body.call?.call_analysis?.messages || [];
 
     const finalDetails = extractFinalDetails(transcriptArray);
-    const transcript =
-      (typeof body.transcript === "string" && body.transcript) ||
-      body.call?.transcript ||
-      transcriptArray.map(t => t.content || "").join("\n");
+    const transcript = (typeof body.transcript === "string" && body.transcript) || transcriptArray.map(t => t.content || "").join("\n");
 
-    const userName = finalDetails.name || "Unknown";
-    const userEmail = finalDetails.email || null;
-    const company = finalDetails.company || null;
-    const location = finalDetails.location || null;
-    const industry = finalDetails.industry || null;
-
-    const token = accessToken || (await refreshZohoToken());
-    if (!token) {
-      console.error("❌ No Zoho CRM token available.");
+    // --- Refresh token ---
+    let token: string;
+    try {
+      token = accessToken || (await refreshZohoToken());
+    } catch (err) {
+      console.error("❌ Zoho token error:", err);
       return NextResponse.json({ error: "No Zoho token" }, { status: 500 });
     }
 
+    // --- Ensure lead created only once ---
     if (callId && (await leadExistsByCallId(callId, token))) {
+      console.log("⚠️ Lead already exists for this conversation, skipping creation");
       return NextResponse.json({ success: true, message: "Lead already exists" });
     }
 
-    const description = `Industry: ${industry || ""}\nLocation: ${location || ""}\n\nTranscript:\n${transcript}`;
+    const description = `Industry: ${finalDetails.industry || ""}\nLocation: ${finalDetails.location || ""}\n\nTranscript:\n${transcript}`;
 
-    // ✅ Create Lead
+    // --- Create lead ---
     const leadResp = await createLead(
-      { lastName: userName, company, email: userEmail, description, country: location, callId },
+      { lastName: finalDetails.name || "Unknown", company: finalDetails.company, email: finalDetails.email, description, country: finalDetails.location, callId },
       token
     );
+    console.log("✅ Lead created:", leadResp);
 
-    // ✅ Trigger Zoho Campaign email
-    if (userEmail) {
-      await addToZohoCampaignsAndSendEmail(userEmail, userName);
+    // --- Trigger Zoho Campaign email ---
+    if (finalDetails.email) {
+      await addToZohoCampaignsAndSendEmail(finalDetails.email, finalDetails.name || "User");
     }
 
     console.log("🎉 Lead creation + email process completed successfully!");
