@@ -1,27 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 
 let accessToken: string | null = null;
+const processedCallIds = new Set<string>(); // in-memory cache
 
 // --- CONFIG ---
-const RETELL_CALL_FIELD_API_NAME = process.env.RETELL_CALL_FIELD_API_NAME || "Retell_Call_ID";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "aksuba7@gmail.com";
-const ZOHO_CAMPAIGNS_AUTH_TOKEN = process.env.ZOHO_CAMPAIGNS_AUTH_TOKEN!;
-const ZOHO_CAMPAIGNS_LIST_KEY = process.env.ZOHO_CAMPAIGNS_LIST_KEY!;
-const SMTP_EMAIL = process.env.SMTP_EMAIL!;
-const SMTP_PASS = process.env.SMTP_PASSWORD!;
-const SMTP_HOST = process.env.SMTP_HOST!;
-
-// --- Transporter (Email Sender) ---
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: 465,
-  secure: true,
-  auth: {
-    user: SMTP_EMAIL,
-    pass: SMTP_PASS,
-  },
-});
+const RETELL_CALL_FIELD_API_NAME =
+  process.env.RETELL_CALL_FIELD_API_NAME || "Retell_Call_ID";
 
 // --- Helper: Refresh Zoho Token ---
 async function refreshZohoToken(): Promise<string> {
@@ -103,7 +87,7 @@ function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
   for (let i = transcriptArray.length - 1; i >= 0; i--) {
     const text = transcriptArray[i].content || "";
     if (!result.name) {
-      const nm = text.match(/(?:name[:\s]*is|my name is|this is)\s*([a-zA-Z\s]+)/i);
+      const nm = text.match(/(?:name is|name as|my name is|this is)\s*([a-zA-Z\s]+)/i);
       if (nm) result.name = nm[1].trim();
     }
     if (!result.email) {
@@ -111,7 +95,7 @@ function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
       if (em) result.email = em[1].trim().toLowerCase();
     }
     if (!result.company) {
-      const cm = text.match(/(?:company|organization|business)[:\s]*(?:is|called)?\s*([a-zA-Z0-9 &]+)/i);
+      const cm = text.match(/(?:company|comapny as|organization|business)[:\s]*(?:is|called)?\s*([a-zA-Z0-9 &]+)/i);
       if (cm) result.company = cm[1].trim();
     }
     if (!result.location) {
@@ -124,59 +108,9 @@ function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
     }
   }
 
-  // Default fallback
   if (!result.company && result.name) result.company = result.name;
 
   return result;
-}
-
-// --- Email Templates ---
-function clientEmailTemplate(name: string) {
-  return `
-    <h3>Thank You for Connecting with MG Consulting Firm</h3>
-    <p>Hi ${name || "there"},</p>
-    <p>Thank you for speaking with our virtual assistant. We’ve received your details and our consultant will contact you soon to schedule your meeting.</p>
-    <p>Best regards,<br/>Team MG Consulting Firm</p>
-  `;
-}
-
-function adminEmailTemplate(lead: any) {
-  return `
-    <h3>New Lead Created from Retell AI Conversation</h3>
-    <p>A new lead was created:</p>
-    <ul>
-      <li><strong>Name:</strong> ${lead.name || "N/A"}</li>
-      <li><strong>Email:</strong> ${lead.email || "N/A"}</li>
-      <li><strong>Company:</strong> ${lead.company || "N/A"}</li>
-      <li><strong>Location:</strong> ${lead.location || "N/A"}</li>
-      <li><strong>Industry:</strong> ${lead.industry || "N/A"}</li>
-    </ul>
-  `;
-}
-
-// --- Send Emails (Client + Admin) ---
-async function sendEmails(lead: any) {
-  try {
-    if (lead.email) {
-      await transporter.sendMail({
-        from: SMTP_EMAIL,
-        to: lead.email,
-        subject: "Thank You for Connecting with MG Consulting Firm",
-        html: clientEmailTemplate(lead.name),
-      });
-      console.log("📨 Client email sent");
-    }
-
-    await transporter.sendMail({
-      from: SMTP_EMAIL,
-      to: ADMIN_EMAIL,
-      subject: "New Lead Created via Retell AI",
-      html: adminEmailTemplate(lead),
-    });
-    console.log("📨 Admin email sent");
-  } catch (err) {
-    console.error("❌ Email sending failed:", err);
-  }
 }
 
 // --- MAIN HANDLER ---
@@ -186,11 +120,25 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const event = body.event || body.status || null;
 
-    if (!["call_completed", "call_analyzed"].includes(event)) {
+    // ✅ Only trigger on completed call
+    if (event !== "call_completed") {
+      console.log(`ℹ️ Ignored event: ${event}`);
       return NextResponse.json({ success: true, message: `Event "${event}" ignored` });
     }
 
     const callId = body.call_id || body.call?.call_id || body.call?.id;
+    if (!callId) {
+      console.log("⚠️ Missing callId, skipping");
+      return NextResponse.json({ success: false, message: "Missing callId" });
+    }
+
+    // ✅ Prevent duplicate calls in same runtime
+    if (processedCallIds.has(callId)) {
+      console.log("⚠️ Duplicate webhook call ignored (same runtime)");
+      return NextResponse.json({ success: true, message: "Duplicate ignored" });
+    }
+    processedCallIds.add(callId);
+
     const transcriptArray: TranscriptEntry[] =
       body.call?.transcript_object ||
       body.call?.conversation ||
@@ -201,15 +149,19 @@ export async function POST(req: NextRequest) {
     const finalDetails = extractFinalDetails(transcriptArray);
     const transcript = transcriptArray.map(t => t.content || "").join("\n");
 
-    let token = accessToken || (await refreshZohoToken());
+    // Refresh Token
+    const token = accessToken || (await refreshZohoToken());
 
-    if (callId && (await leadExistsByCallId(callId, token))) {
-      console.log("⚠️ Lead already exists — skipping duplicate");
+    // Ensure lead not already exists in Zoho
+    if (await leadExistsByCallId(callId, token)) {
+      console.log("⚠️ Lead already exists — skipping duplicate creation");
       return NextResponse.json({ success: true, message: "Lead already exists" });
     }
 
+    // Build Description
     const description = `Industry: ${finalDetails.industry || ""}\nLocation: ${finalDetails.location || ""}\n\nTranscript:\n${transcript}`;
 
+    // Create Lead in Zoho CRM
     const leadResp = await createLead(
       {
         lastName: finalDetails.name || "Unknown",
@@ -222,15 +174,13 @@ export async function POST(req: NextRequest) {
       token
     );
 
-    console.log("✅ Lead created:", leadResp);
+    console.log("✅ Lead created successfully:", leadResp);
 
-    // Trigger both emails
-    await sendEmails(finalDetails);
+    console.log("🎉 Lead creation complete. Zoho CRM workflow will handle emails.");
 
-    console.log("🎉 Lead + Email process completed successfully!");
-    return NextResponse.json({ success: true, message: "Lead created & emails sent" });
+    return NextResponse.json({ success: true, message: "Lead created successfully" });
   } catch (err) {
     console.error("❌ Webhook error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
