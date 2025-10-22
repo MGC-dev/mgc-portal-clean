@@ -1,15 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 
 let accessToken: string | null = null;
 
 // --- CONFIG ---
 const RETELL_CALL_FIELD_API_NAME = process.env.RETELL_CALL_FIELD_API_NAME || "Retell_Call_ID";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "aksuba7@gmail.com";
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!); // SendGrid API Key
+const ZOHO_CAMPAIGNS_AUTH_TOKEN = process.env.ZOHO_CAMPAIGNS_AUTH_TOKEN!;
+const ZOHO_CAMPAIGNS_LIST_KEY = process.env.ZOHO_CAMPAIGNS_LIST_KEY!;
+const SMTP_EMAIL = process.env.SMTP_EMAIL!;
+const SMTP_PASS = process.env.SMTP_PASSWORD!;
+const SMTP_HOST = process.env.SMTP_HOST!;
 
-// --- Helpers ---
-async function refreshZohoToken() {
+// --- Transporter (Email Sender) ---
+const transporter = nodemailer.createTransport({
+  host: SMTP_HOST,
+  port: 465,
+  secure: true,
+  auth: {
+    user: SMTP_EMAIL,
+    pass: SMTP_PASS,
+  },
+});
+
+// --- Helper: Refresh Zoho Token ---
+async function refreshZohoToken(): Promise<string> {
   const res = await fetch("https://accounts.zoho.com/oauth/v2/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -21,47 +36,29 @@ async function refreshZohoToken() {
     }),
   });
 
-  const text = await res.text();
-  try {
-    const data = text ? JSON.parse(text) : {};
-    if (data.access_token) accessToken = data.access_token;
-    else console.error("Failed to refresh token", data);
-  } catch (err) {
-    console.error("Failed to parse token response:", text);
+  const data = await res.json().catch(() => ({}));
+
+  if (data.access_token) {
+    accessToken = data.access_token;
+    console.log("✅ Zoho token refreshed");
+    return data.access_token;
+  } else {
+    console.error("❌ Failed to refresh Zoho token:", data);
+    throw new Error("Failed to refresh Zoho token");
   }
-  return accessToken;
 }
 
+// --- Safe JSON Helper ---
 async function safeJson(res: Response) {
   const text = await res.text();
   try {
     return text ? JSON.parse(text) : {};
-  } catch (err) {
-    console.warn("safeJson: invalid JSON response:", text);
+  } catch {
     return { raw: text };
   }
 }
 
-// --- SendGrid Email Function ---
-async function sendEmail(to: string, subject: string, html: string) {
-  if (!to) return { error: "Missing recipient email" };
-  try {
-    const msg = {
-      to,
-      from: "mgcentral@mgconsultingfirm.com", // Verified sender in SendGrid
-      subject,
-      html,
-    };
-    const res = await sgMail.send(msg);
-    console.log("✅ Email sent via SendGrid:", res);
-    return { success: true, res };
-  } catch (err: any) {
-    console.error("❌ SendGrid email error:", err);
-    return { success: false, error: err.message || String(err) };
-  }
-}
-
-// --- Zoho CRM helpers ---
+// --- Check if Lead Already Exists ---
 async function leadExistsByCallId(callId: string, token: string) {
   if (!callId) return false;
   const criteria = `(${RETELL_CALL_FIELD_API_NAME}:equals:${callId})`;
@@ -71,34 +68,32 @@ async function leadExistsByCallId(callId: string, token: string) {
   return Array.isArray(data.data) && data.data.length > 0;
 }
 
-async function createLead(payload: {
-  lastName: string;
-  company: string | null;
-  email: string | null;
-  description: string;
-  country?: string;
-  callId?: string;
-}, token: string) {
+// --- Create New Lead in Zoho CRM ---
+async function createLead(payload: any, token: string) {
   const leadObj: any = {
     Last_Name: payload.lastName || "Unknown",
-    Company: payload.company || "Retell Lead",
+    Company: payload.company || payload.lastName || "Retell Lead",
     Description: payload.description || "",
     Lead_Source: "AI",
   };
+
   if (payload.email) leadObj.Email = payload.email;
   if (payload.country) leadObj.Country = payload.country;
   if (payload.callId) leadObj[RETELL_CALL_FIELD_API_NAME] = payload.callId;
 
   const res = await fetch("https://www.zohoapis.com/crm/v2/Leads", {
     method: "POST",
-    headers: { Authorization: `Zoho-oauthtoken ${token}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ data: [leadObj] }),
   });
 
-  return safeJson(res);
+  return await safeJson(res);
 }
 
-// --- Extract final user data ---
+// --- Extract Details from Transcript ---
 type TranscriptEntry = { role?: string; content?: string };
 
 function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
@@ -127,23 +122,71 @@ function extractFinalDetails(transcriptArray: TranscriptEntry[]) {
       const ind = text.match(/(?:industry|sector)[:\s]*(?:is|in)?\s*([a-zA-Z0-9 &]+)/i);
       if (ind) result.industry = ind[1].trim();
     }
-    if (result.name && result.email && result.company && result.location && result.industry) break;
   }
+
+  // Default fallback
+  if (!result.company && result.name) result.company = result.name;
+
   return result;
 }
 
-// --- Main webhook handler ---
+// --- Email Templates ---
+function clientEmailTemplate(name: string) {
+  return `
+    <h3>Thank You for Connecting with MG Consulting Firm</h3>
+    <p>Hi ${name || "there"},</p>
+    <p>Thank you for speaking with our virtual assistant. We’ve received your details and our consultant will contact you soon to schedule your meeting.</p>
+    <p>Best regards,<br/>Team MG Consulting Firm</p>
+  `;
+}
+
+function adminEmailTemplate(lead: any) {
+  return `
+    <h3>New Lead Created from Retell AI Conversation</h3>
+    <p>A new lead was created:</p>
+    <ul>
+      <li><strong>Name:</strong> ${lead.name || "N/A"}</li>
+      <li><strong>Email:</strong> ${lead.email || "N/A"}</li>
+      <li><strong>Company:</strong> ${lead.company || "N/A"}</li>
+      <li><strong>Location:</strong> ${lead.location || "N/A"}</li>
+      <li><strong>Industry:</strong> ${lead.industry || "N/A"}</li>
+    </ul>
+  `;
+}
+
+// --- Send Emails (Client + Admin) ---
+async function sendEmails(lead: any) {
+  try {
+    if (lead.email) {
+      await transporter.sendMail({
+        from: SMTP_EMAIL,
+        to: lead.email,
+        subject: "Thank You for Connecting with MG Consulting Firm",
+        html: clientEmailTemplate(lead.name),
+      });
+      console.log("📨 Client email sent");
+    }
+
+    await transporter.sendMail({
+      from: SMTP_EMAIL,
+      to: ADMIN_EMAIL,
+      subject: "New Lead Created via Retell AI",
+      html: adminEmailTemplate(lead),
+    });
+    console.log("📨 Admin email sent");
+  } catch (err) {
+    console.error("❌ Email sending failed:", err);
+  }
+}
+
+// --- MAIN HANDLER ---
 export async function POST(req: NextRequest) {
   try {
+    console.log("🟢 Retell webhook triggered");
     const body = await req.json().catch(() => ({}));
-    console.log("Incoming Retell payload:", JSON.stringify(body));
-
-    if (!body || Object.keys(body).length === 0)
-      return NextResponse.json({ success: true, message: "Empty payload ignored" });
-
     const event = body.event || body.status || null;
+
     if (!["call_completed", "call_analyzed"].includes(event)) {
-      console.log(`Event "${event}" ignored.`);
       return NextResponse.json({ success: true, message: `Event "${event}" ignored` });
     }
 
@@ -156,66 +199,38 @@ export async function POST(req: NextRequest) {
       [];
 
     const finalDetails = extractFinalDetails(transcriptArray);
-    const transcript =
-      (typeof body.transcript === "string" && body.transcript) ||
-      body.call?.transcript ||
-      (transcriptArray.length ? transcriptArray.map(t => t.content || "").join("\n") : "");
+    const transcript = transcriptArray.map(t => t.content || "").join("\n");
 
-    const userName = finalDetails.name || "Unknown";
-    const userEmail = finalDetails.email || null;
-    const company = finalDetails.company || null;
-    const location = finalDetails.location || null;
-    const industry = finalDetails.industry || null;
+    let token = accessToken || (await refreshZohoToken());
 
-    console.log("Final extracted data:", { userName, userEmail, company, location, industry });
-
-    // --- Refresh Zoho token ---
-    const token = accessToken || (await refreshZohoToken());
-    if (!token) return NextResponse.json({ error: "No Zoho token" }, { status: 500 });
-
-    // --- Check if lead exists ---
     if (callId && (await leadExistsByCallId(callId, token))) {
-      return NextResponse.json({ success: true, message: "Already processed (call id)" });
+      console.log("⚠️ Lead already exists — skipping duplicate");
+      return NextResponse.json({ success: true, message: "Lead already exists" });
     }
 
-    // --- Create Lead in Zoho ---
-    const description = `Industry: ${industry || ""}\nLocation: ${location || ""}\n\nTranscript:\n${transcript}`;
+    const description = `Industry: ${finalDetails.industry || ""}\nLocation: ${finalDetails.location || ""}\n\nTranscript:\n${transcript}`;
+
     const leadResp = await createLead(
-      { lastName: userName, company, email: userEmail, description, country: location, callId },
+      {
+        lastName: finalDetails.name || "Unknown",
+        company: finalDetails.company,
+        email: finalDetails.email,
+        description,
+        country: finalDetails.location,
+        callId,
+      },
       token
     );
-    console.log("Lead create response:", leadResp);
 
-    // --- Send Emails AFTER lead creation ---
-    const summaryHtml = `
-      <h3>Retell Call Summary</h3>
-      <p><b>Call ID:</b> ${callId || "N/A"}</p>
-      <p><b>Name:</b> ${userName}</p>
-      <p><b>Email:</b> ${userEmail}</p>
-      <p><b>Company:</b> ${company}</p>
-      <p><b>Location:</b> ${location}</p>
-      <p><b>Industry:</b> ${industry}</p>
-      <hr/>
-      <pre>${transcript}</pre>
-    `;
+    console.log("✅ Lead created:", leadResp);
 
-    // Send Admin Email
-    await sendEmail(ADMIN_EMAIL, `Retell Call ${callId || ""} Summary`, summaryHtml);
+    // Trigger both emails
+    await sendEmails(finalDetails);
 
-    // Send User Email
-    if (userEmail) {
-      await sendEmail(
-        userEmail,
-        "Thanks — we received your intake",
-        `<p>Hi ${userName},</p><p>Thank you for sharing your details. Our team will get back to you shortly.</p>`
-      );
-    } else {
-      console.warn("No user email found - cannot send user email.");
-    }
-
-    return NextResponse.json({ success: true });
+    console.log("🎉 Lead + Email process completed successfully!");
+    return NextResponse.json({ success: true, message: "Lead created & emails sent" });
   } catch (err) {
-    console.error("Webhook error:", err);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    console.error("❌ Webhook error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
