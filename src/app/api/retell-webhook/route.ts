@@ -121,10 +121,11 @@ export async function POST(req: NextRequest) {
     const event = body.event || body.status || null;
 
     // ✅ Only trigger on completed call
-    if (event !== "call_completed") {
-      console.log(`ℹ️ Ignored event: ${event}`);
-      return NextResponse.json({ success: true, message: `Event "${event}" ignored` });
-    }
+    if (event !== "call_completed" && event !== "call_analyzed") {
+  console.log(`ℹ️ Ignored event: ${event}`);
+  return NextResponse.json({ success: true, message: `Event "${event}" ignored` });
+}
+
 
     const callId = body.call_id || body.call?.call_id || body.call?.id;
     if (!callId) {
@@ -160,7 +161,7 @@ export async function POST(req: NextRequest) {
 
     // Build Description
     const description = `Industry: ${finalDetails.industry || ""}\nLocation: ${finalDetails.location || ""}\n\nTranscript:\n${transcript}`;
-
+    
     // Create Lead in Zoho CRM
     const leadResp = await createLead(
       {
@@ -173,6 +174,9 @@ export async function POST(req: NextRequest) {
       },
       token
     );
+    if (!leadResp.data) {
+        console.error("❌ Zoho Lead Creation Failed:", leadResp);
+      }
 
     console.log("✅ Lead created successfully:", leadResp);
 
