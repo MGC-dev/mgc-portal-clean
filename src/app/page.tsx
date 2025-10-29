@@ -8,8 +8,13 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect("/mgdashboard");
-  } else {
-    redirect("/register");
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    const isAdmin = profile?.role && ["admin", "super_admin"].includes(profile.role);
+    redirect(isAdmin ? "/admin" : "/mgdashboard");
   }
+  redirect("/register");
 }

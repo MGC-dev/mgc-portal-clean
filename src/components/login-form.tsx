@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { LoadingOverlay } from "@/components/ui/loading-overlay";
 
 export function LoginForm() {
   const [loginData, setLoginData] = useState({
@@ -53,11 +54,13 @@ export function LoginForm() {
           clientError ||
             "Supabase client not initialized. Please check your environment variables."
         );
+        setLoading(false);
         return;
       }
 
       if (!loginData.email || !loginData.password) {
         setError("Email and Password are required!");
+        setLoading(false);
         return;
       }
 
@@ -67,7 +70,16 @@ export function LoginForm() {
       });
 
       if (error) {
+        const msg = (error.message || "").toLowerCase();
+        const status = (error as any)?.status ?? 0;
+        // Only redirect to /suspended when Supabase explicitly blocks sign-in
+        const isBanned = status === 403 && (msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked"));
+        if (isBanned) {
+          router.replace("/suspended");
+          return;
+        }
         setError(error.message);
+        setLoading(false);
         return;
       }
 
@@ -82,11 +94,10 @@ export function LoginForm() {
 
       // If we get here, something unexpected happened
       setError("Login failed. Please try again.");
+      setLoading(false);
     } catch (err) {
       console.error("Login error:", err);
       setError("An unexpected error occurred. Please try again.");
-    } finally {
-      // Always reset loading state
       setLoading(false);
     }
   };
@@ -105,6 +116,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <LoadingOverlay show={loading} label="Signing in..." />
       {error && (
         <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
           {error}

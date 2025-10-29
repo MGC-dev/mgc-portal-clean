@@ -42,6 +42,40 @@ export async function middleware(request: NextRequest) {
     console.error("Middleware auth getUser failed:", e);
   }
 
+  // If authenticated, fetch profile role/suspended once for routing decisions
+  let profile: { role?: string; suspended?: boolean } | null = null;
+  if (user) {
+    try {
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("role,suspended")
+        .eq("id", user.id)
+        .single();
+      profile = p ?? null;
+    } catch (e) {
+      console.error("Middleware profile fetch failed:", e);
+    }
+  }
+
+  const isAdmin = Boolean(profile?.role && ["admin", "super_admin"].includes(profile!.role!));
+
+  // Block suspended users and route to /suspended
+  if (user && profile?.suspended && !request.nextUrl.pathname.startsWith("/suspended")) {
+    return NextResponse.redirect(new URL("/suspended", request.url));
+  }
+
+  // Auto-route admins to /admin from common entry points
+  if (
+    user &&
+    isAdmin &&
+    (request.nextUrl.pathname === "/" ||
+      request.nextUrl.pathname.startsWith("/mgdashboard") ||
+      request.nextUrl.pathname.startsWith("/login") ||
+      request.nextUrl.pathname.startsWith("/register"))
+  ) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
   // Redirect unauthenticated users trying to access mgdashboard to /login
   if (!user && request.nextUrl.pathname.startsWith("/mgdashboard")) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -52,9 +86,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/register", request.url));
   }
 
-  // If user is authenticated and hits /register, optionally send to dashboard
+  // If user is authenticated and hits /register, optionally send to dashboard/admin
   if (user && request.nextUrl.pathname.startsWith("/register")) {
-    return NextResponse.redirect(new URL("/mgdashboard", request.url));
+    return NextResponse.redirect(new URL(isAdmin ? "/admin" : "/mgdashboard", request.url));
+  }
+
+  // Admin route protection: require admin role
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    try {
+      // Use previously fetched profile to check admin
+      if (!isAdmin) {
+        return NextResponse.redirect(new URL("/mgdashboard", request.url));
+      }
+    } catch (e) {
+      console.error("Middleware admin check failed:", e);
+      return NextResponse.redirect(new URL("/mgdashboard", request.url));
+    }
   }
 
   return supabaseResponse;

@@ -20,6 +20,43 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Authentication & RBAC
+
+This app uses Supabase Auth with a simple RBAC model:
+
+- Users are stored in `auth.users` and mirrored in `public.profiles`.
+- Roles can be set in `public.profiles.role` (`client`, `provider`, `admin`, `support`, `super_admin`).
+- Optional additional roles can be assigned via `public.role_assignments`.
+- Row Level Security policies ensure clients only access their own data, while admins can manage globally.
+
+### Environment Variables
+
+Set the following in `.env.local`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+```
+
+### Database Migration
+
+Apply the SQL schema to your Supabase project using the SQL editor. Use the contents of `supabase-schema.sql`.
+
+Key tables included:
+
+- `profiles`, `role_assignments`
+- `companies`, `appointments`
+- `invoices`, `payments`
+- `support_tickets`, `messages`
+- `subscription_tiers`, `user_subscriptions`, `service_components`, `service_component_access`
+- `contracts`, `session_recaps`, `resources`
+
+### Admin Access
+
+- Create an admin by setting `profiles.role = 'admin'` for a user, or inserting into `role_assignments` with role `admin`.
+- Navigate to `/admin` (middleware restricts access to admins; non-admins are redirected).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

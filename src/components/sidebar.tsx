@@ -54,14 +54,9 @@ const menuItems = [
     icon: StickyNote,
   },
   {
-    name: "Ask a Question",
+    name: "Support",
     href: "/mgdashboard/questions",
     icon: HelpCircle,
-  },
-  {
-    name: "Service Add-ons",
-    href: "/mgdashboard/addon",
-    icon: Puzzle,
   },
   {
     name: "Company Profile",

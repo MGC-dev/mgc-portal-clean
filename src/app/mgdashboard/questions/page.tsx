@@ -46,7 +46,7 @@ export default function AskQuestionPage() {
 
         {/* Main Content */}
         <main className="flex-1 p-8">
-          <h2 className="text-2xl font-bold mb-6">Ask a Question</h2>
+          <h2 className="text-2xl font-bold mb-6">Support</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Submit New Question */}

@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 export default async function MgDashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const supabase = createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   // Get authenticated user from cookies/session
   const {

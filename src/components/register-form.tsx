@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Hash, Eye, EyeOff } from "react-feather";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { LoadingOverlay } from "@/components/ui/loading-overlay";
 
 export function RegisterForm() {
   const [registerData, setRegisterData] = useState({
@@ -245,6 +246,7 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <LoadingOverlay show={loading} label="Processing..." />
       {error && (
         <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
           {error}
