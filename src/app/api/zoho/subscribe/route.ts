@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 let accessToken: string | null = null;
 
-// --- Helper: Refresh Token ---
 async function refreshZohoToken(): Promise<string> {
   const res = await fetch("https://accounts.zoho.com/oauth/v2/token", {
     method: "POST",
@@ -16,52 +15,58 @@ async function refreshZohoToken(): Promise<string> {
   });
 
   const data = await res.json();
-  if (data.access_token) {
-    accessToken = data.access_token;
-    return data.access_token;
-  }
-  throw new Error("Failed to refresh Zoho access token");
+  accessToken = data.access_token;
+  return data.access_token;
 }
 
-// --- Main API handler ---
 export async function POST(req: NextRequest) {
   try {
-    const { planCode, customer } = await req.json();
-    if (!planCode) {
-      return NextResponse.json({ error: "Missing planCode" }, { status: 400 });
-    }
+    const { customer, subscription } = await req.json();
 
     const token = accessToken || (await refreshZohoToken());
 
-    // Create hosted page for subscription
-    const res = await fetch(
+    // ✅ Pick generic Zoho plan
+    const planCode =
+      subscription.billing_cycle === "yearly"
+        ? "generic_yearly"
+        : "generic_monthly";
+
+    const resZoho = await fetch(
       "https://subscriptions.zoho.com/api/v1/hostedpages/newsubscription",
       {
         method: "POST",
         headers: {
           Authorization: `Zoho-oauthtoken ${token}`,
           "Content-Type": "application/json",
-          "X-com-zoho-subscriptions-organizationid": process.env.ZOHO_ORG_ID!,
+          "X-com-zoho-subscriptions-organizationid":
+            process.env.ZOHO_ORG_ID!,
         },
         body: JSON.stringify({
           plan: { plan_code: planCode },
-          customer: {
-            display_name: customer?.name || "Guest User",
-            email: customer?.email || "guest@example.com",
+          customer,
+          subscription: {
+            setup_fee: subscription.amount, // ✅ dynamic price
           },
         }),
       }
     );
 
-    const data = await res.json();
+    const data = await resZoho.json();
+
     if (data.hostedpage?.url) {
-      return NextResponse.json({ url: data.hostedpage.url });
+      return NextResponse.json({ payment_url: data.hostedpage.url });
     }
 
-    console.error("❌ Zoho API Error:", data);
-    return NextResponse.json({ error: "Failed to create Zoho hosted page" }, { status: 500 });
+    console.error("Zoho error:", data);
+    return NextResponse.json(
+      { error: "Failed to create subscription" },
+      { status: 500 }
+    );
   } catch (err) {
-    console.error("❌ Subscription Error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error(err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

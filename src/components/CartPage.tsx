@@ -3,7 +3,24 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+const [userEmail, setUserEmail] = useState<string | null>(null);
+const [userName, setUserName] = useState<string | null>(null);
+
+useEffect(() => {
+  const getUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUserEmail(user?.email ?? null);
+    setUserName(user?.user_metadata?.full_name ?? null);
+  };
+  getUser();
+}, []);
 
 
 type PlanType = "Monthly" | "Yearly";
@@ -23,25 +40,22 @@ interface SubscriptionCheckoutProps {
 
 export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheckoutProps) {
   const [planType, setPlanType] = useState<PlanType>("Monthly");
-  const searchParams = useSearchParams();
-  const planName = searchParams.get("name");
-  const planPrice = searchParams.get("price");
   const [cart, setCart] = useState<CartItem[]>([]);
 
-   useEffect(() => {
-    if (planName && planPrice) {
-      const priceNumber = parseInt(planPrice.replace(/\D/g, "")) || 0;
+  useEffect(() => {
+    if (selectedPlan) {
+      const priceNumber = parseInt(selectedPlan.price.replace(/\D/g, "")) || 0;
 
       setCart([
         {
           id: 1,
-          name: planName,
+          name: selectedPlan.name,
           monthlyPrice: priceNumber,
-          yearlyPrice: priceNumber * 10, // just example multiplier
+          yearlyPrice: priceNumber * 10,
         },
       ]);
     }
-  }, [planName, planPrice]);
+  }, [selectedPlan]);
 
   const subtotal = cart.reduce(
     (s, i) => s + (planType === "Monthly" ? i.monthlyPrice : i.yearlyPrice),
@@ -52,7 +66,7 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
 
   const removeItem = (id: number) => setCart(cart.filter((i) => i.id !== id));
 
-  const handlePayment = async () => {
+  //const handlePayment = async () => {
   // const res = await fetch('/api/zoho/subscribe', {
   //   method: 'POST',
   //   body: JSON.stringify({
@@ -73,7 +87,7 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
   // } else {
   //   alert("Failed to create subscription.");
   // }
-window.location.href = '/api/zoho/subscribe';
+//window.location.href = '/api/zoho/subscribe';
     // const res = await fetch('/api/zoho/subscribe', {
     //   method: 'POST',
     //   headers: {
@@ -94,7 +108,57 @@ window.location.href = '/api/zoho/subscribe';
     // }
 
 
+//};
+
+const handlePayment = async () => {
+  if (!selectedPlan) {
+    alert("Please select a plan first.");
+    return;
+  }
+
+  try {
+    const priceNumber = parseInt(
+      selectedPlan.price.replace(/\D/g, "")
+    ) || 0;
+
+    // ✅ Send plan + price + user email to server
+    const res = await fetch("/api/zoho/create-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer: {
+          email: userEmail,     // ✅ Use your logged-in user email
+          name: userName        // ✅ Or use Supabase auth user
+        },
+        subscription: {
+          plan_name: selectedPlan.name,
+          amount: priceNumber,
+          billing_cycle: planType.toLowerCase() // monthly / yearly
+        }
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Subscription failed:", data);
+      alert("Error creating subscription. Please try again.");
+      return;
+    }
+
+    // ✅ Zoho returns hosted page → redirect user
+    if (data.payment_url) {
+      window.location.href = data.payment_url;
+    } else {
+      alert("No payment URL returned.");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong. Try again.");
+  }
 };
+
 
 
   return (
