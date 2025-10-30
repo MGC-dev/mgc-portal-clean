@@ -1,11 +1,26 @@
 import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
-export const createServerSupabaseClient = () => {
-  const cookieStore = cookies();
-  return createServerComponentClient({
-    cookies: () => cookieStore,
+export const createServerSupabaseClient = async () => {
+  const cookieStore = await cookies();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if (!url || !anon) {
+    throw new Error("Missing Supabase envs: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+  return createServerClient(url, anon, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value;
+      },
+      set(name: string, value: string, options: any) {
+        cookieStore.set({ name, value, ...options });
+      },
+      remove(name: string, options: any) {
+        cookieStore.set({ name, value: "", ...options });
+      },
+    },
   });
 };
 
@@ -25,3 +40,41 @@ export const createAdminSupabaseClient = () => {
     },
   });
 };
+
+// Helpers: get current user and profile (server-side)
+export async function getUserAndProfile() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { user: null, profile: null };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  return { user, profile };
+}
+
+export async function isAdmin() {
+  const { user, profile } = await getUserAndProfile();
+  if (!user) return false;
+  // Prefer profile.role, fallback to role_assignments
+  if (profile?.role && ["admin", "super_admin"].includes(profile.role)) {
+    return true;
+  }
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("role_assignments")
+    .select("role")
+    .eq("user_id", user.id)
+    .in("role", ["admin", "super_admin"]);
+  return Array.isArray(data) && data.length > 0;
+}
+
+export async function requireAdmin() {
+  return (await isAdmin()) === true;
+}

@@ -37,6 +37,13 @@ alter table public.profiles
 alter table public.profiles
   add constraint profiles_role_check check (role in ('client','provider','admin','support','super_admin'));
 
+<<<<<<< HEAD
+=======
+-- suspension flag (used for UI and app logic; admin banning handled via auth admin)
+alter table public.profiles
+  add column if not exists suspended boolean not null default false;
+
+>>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
 -- role assignments (global roles)
 create table if not exists public.role_assignments (
   id uuid primary key default gen_random_uuid(),
@@ -287,4 +294,84 @@ grant select on table public.profiles to anon;
 -- Add required grants for appointments used by client sessions
 grant select, insert, update on table public.appointments to authenticated;
 grant select on table public.appointments to anon;
+<<<<<<< HEAD
 grant select on table public.appointments to anon;
+=======
+grant select on table public.appointments to anon;
+
+-- =====================
+-- Additional core features per client portal requirements
+-- =====================
+
+-- Contracts (view and e-sign capabilities)
+create table if not exists public.contracts (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid references public.companies(id) on delete set null,
+  client_user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  file_url text,
+  status text not null default 'draft' check (status in ('draft','sent','signed','void')),
+  signed_at timestamptz,
+  created_at timestamptz default now()
+);
+create index if not exists idx_contracts_client on public.contracts(client_user_id);
+create index if not exists idx_contracts_company on public.contracts(company_id);
+alter table public.contracts enable row level security;
+drop policy if exists contracts_client_select on public.contracts;
+create policy contracts_client_select on public.contracts for select using (client_user_id = auth.uid());
+drop policy if exists contracts_client_update on public.contracts;
+create policy contracts_client_update on public.contracts for update using (client_user_id = auth.uid());
+drop policy if exists contracts_admin_manage on public.contracts;
+create policy contracts_admin_manage on public.contracts for all using (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin'))) with check (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin')));
+
+-- Session recap archive (summaries of past coaching sessions)
+create table if not exists public.session_recaps (
+  id uuid primary key default gen_random_uuid(),
+  client_user_id uuid not null references public.profiles(id) on delete cascade,
+  provider_user_id uuid references public.profiles(id) on delete set null,
+  title text not null,
+  summary text,
+  attachments jsonb,
+  created_at timestamptz default now()
+);
+create index if not exists idx_session_recaps_client on public.session_recaps(client_user_id);
+create index if not exists idx_session_recaps_provider on public.session_recaps(provider_user_id);
+alter table public.session_recaps enable row level security;
+drop policy if exists session_recaps_participant_select on public.session_recaps;
+create policy session_recaps_participant_select on public.session_recaps for select using (client_user_id = auth.uid() or provider_user_id = auth.uid());
+drop policy if exists session_recaps_participant_update on public.session_recaps;
+create policy session_recaps_participant_update on public.session_recaps for update using (provider_user_id = auth.uid() or client_user_id = auth.uid());
+drop policy if exists session_recaps_admin_manage on public.session_recaps;
+create policy session_recaps_admin_manage on public.session_recaps for all using (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin'))) with check (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin')));
+
+-- Resource library (templates, checklists, SOPs)
+create table if not exists public.resources (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  category text,
+  file_url text,
+  access_level text not null default 'basic' check (access_level in ('basic','intermediate','advanced')),
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz default now()
+);
+create index if not exists idx_resources_category on public.resources(category);
+alter table public.resources enable row level security;
+drop policy if exists resources_select_all on public.resources;
+create policy resources_select_all on public.resources for select using (true);
+drop policy if exists resources_admin_manage on public.resources;
+create policy resources_admin_manage on public.resources for all using (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin'))) with check (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin')));
+
+-- Grants for new tables
+grant select, insert, update on table public.contracts to authenticated;
+grant select on table public.contracts to anon;
+grant all privileges on table public.contracts to service_role;
+
+grant select, insert, update on table public.session_recaps to authenticated;
+grant select on table public.session_recaps to anon;
+grant all privileges on table public.session_recaps to service_role;
+
+grant select on table public.resources to authenticated;
+grant select on table public.resources to anon;
+grant all privileges on table public.resources to service_role;
+>>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
