@@ -22,10 +22,6 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@react-three/drei": "^10.7.3",
     "@react-three/fiber": "^9.3.0",
-<<<<<<< HEAD
-    "@sendgrid/mail": "^8.1.6",
-=======
->>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.74.0",
@@ -39,17 +35,6 @@
     "geist": "^1.5.1",
     "js": "^0.1.0",
     "lucide-react": "^0.540.0",
-<<<<<<< HEAD
-    "next": "^15.5.4",
-    "next-auth": "^4.24.11",
-    "nodemailer": "^6.10.1",
-    "nookies": "^2.5.2",
-    "postcss": "^8.5.6",
-    "react": "^19.2.0",
-    "react-big-calendar": "^1.19.4",
-    "react-day-picker": "^9.9.0",
-    "react-dom": "^19.2.0",
-=======
     "next": "^15.5.2",
     "next-auth": "^4.24.11",
     "nookies": "^2.5.2",
@@ -58,7 +43,6 @@
     "react-big-calendar": "^1.19.4",
     "react-day-picker": "^9.9.0",
     "react-dom": "19.1.0",
->>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
     "react-feather": "^2.0.10",
     "react-hook-form": "^7.62.0",
     "recharts": "^3.1.2",
@@ -70,10 +54,6 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-<<<<<<< HEAD
-    "@types/nodemailer": "^7.0.2",
-=======
->>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
     "@types/react": "^19",
     "@types/react-big-calendar": "^1.16.2",
     "@types/react-dom": "^19",
