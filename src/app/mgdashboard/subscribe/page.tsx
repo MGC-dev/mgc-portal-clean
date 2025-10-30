@@ -157,6 +157,7 @@ function PlanCard({
           ))}
         </ul>
       </div>
+      
       <button
         className={`w-full py-2 rounded-md font-medium text-sm bg-${color}-600 text-white hover:bg-${color}-700`}
         onClick={() => onSubscribe({ name: title, price })}
