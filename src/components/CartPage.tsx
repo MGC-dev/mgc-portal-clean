@@ -4,24 +4,10 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-const [userEmail, setUserEmail] = useState<string | null>(null);
-const [userName, setUserName] = useState<string | null>(null);
-
-useEffect(() => {
-  const getUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUserEmail(user?.email ?? null);
-    setUserName(user?.user_metadata?.full_name ?? null);
-  };
-  getUser();
-}, []);
-
 
 type PlanType = "Monthly" | "Yearly";
 
@@ -31,6 +17,7 @@ type CartItem = {
   monthlyPrice: number;
   yearlyPrice: number;
 };
+
 interface SubscriptionCheckoutProps {
   selectedPlan: {
     name: string;
@@ -39,8 +26,20 @@ interface SubscriptionCheckoutProps {
 }
 
 export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheckoutProps) {
+  // ✅ Hooks MUST be inside component
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [planType, setPlanType] = useState<PlanType>("Monthly");
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserEmail(user?.email ?? null);
+      setUserName(user?.user_metadata?.full_name ?? null);
+    };
+    getUser();
+  }, []);
 
   useEffect(() => {
     if (selectedPlan) {
@@ -66,56 +65,36 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
 
   const removeItem = (id: number) => setCart(cart.filter((i) => i.id !== id));
 
-  
+  const handlePayment = async () => {
+    if (!selectedPlan) {
+      alert("Please select a plan first.");
+      return;
+    }
 
-const handlePayment = async () => {
-  if (!selectedPlan) {
-    alert("Please select a plan first.");
-    return;
-  }
+    const priceNumber = parseInt(selectedPlan.price.replace(/\D/g, "")) || 0;
 
-  try {
-    const priceNumber = parseInt(
-      selectedPlan.price.replace(/\D/g, "")
-    ) || 0;
+    if (!priceNumber) {
+      alert("This plan requires manual sales contact.");
+      return;
+    }
 
-    // ✅ Send plan + price + user email to server
     const res = await fetch("/api/zoho/create-subscription", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        customer: {
-          email: userEmail,     // ✅ Use your logged-in user email
-          name: userName        // ✅ Or use Supabase auth user
-        },
+        customer: { email: userEmail, name: userName },
         subscription: {
           plan_name: selectedPlan.name,
           amount: priceNumber,
-          billing_cycle: planType.toLowerCase() // monthly / yearly
+          billing_cycle: planType.toLowerCase(),
         }
       })
     });
 
     const data = await res.json();
-
-    if (!res.ok) {
-      console.error("Subscription failed:", data);
-      alert("Error creating subscription. Please try again.");
-      return;
-    }
-
-    // ✅ Zoho returns hosted page → redirect user
-    if (data.payment_url) {
-      window.location.href = data.payment_url;
-    } else {
-      alert("No payment URL returned.");
-    }
-
-  } catch (err) {
-    console.error(err);
-    alert("Something went wrong. Try again.");
-  }
-};
+    if (data.payment_url) window.location.href = data.payment_url;
+    else alert("Subscription failed");
+  };
 
 
 
