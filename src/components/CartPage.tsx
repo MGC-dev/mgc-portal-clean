@@ -78,7 +78,7 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
       return;
     }
 
-    const res = await fetch("/api/zoho/create-subscription", {
+    const res = await fetch("/api/zoho/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
