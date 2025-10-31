@@ -15,6 +15,11 @@ async function refreshZohoToken(): Promise<string> {
   });
 
   const data = await res.json();
+  if (!data.access_token) {
+    console.error("❌ Refresh token failed:", data);
+    throw new Error("Refresh token failed");
+  }
+
   accessToken = data.access_token;
   return data.access_token;
 }
@@ -22,17 +27,17 @@ async function refreshZohoToken(): Promise<string> {
 export async function POST(req: NextRequest) {
   try {
     const { customer, subscription } = await req.json();
+    if (!subscription?.amount || !customer?.email) {
+      return NextResponse.json(
+        { error: "Missing required payment fields" },
+        { status: 400 }
+      );
+    }
 
     const token = accessToken || (await refreshZohoToken());
 
-    // ✅ Pick generic Zoho plan
-    const planCode =
-      subscription.billing_cycle === "yearly"
-        ? "generic_yearly"
-        : "generic_monthly";
-
-    const resZoho = await fetch(
-      "https://subscriptions.zoho.com/api/v1/hostedpages/newsubscription",
+    const chargeReq = await fetch(
+      "https://subscriptions.zoho.com/api/v1/hostedpages/charge",
       {
         method: "POST",
         headers: {
@@ -42,31 +47,27 @@ export async function POST(req: NextRequest) {
             process.env.ZOHO_ORG_ID!,
         },
         body: JSON.stringify({
-          plan: { plan_code: planCode },
           customer,
-          subscription: {
-            setup_fee: subscription.amount, // ✅ dynamic price
-          },
+          amount: subscription.amount,
+          description: subscription.plan_name,
+          currency_code: "USD",
         }),
       }
     );
 
-    const data = await resZoho.json();
+    const data = await chargeReq.json();
+    console.log("✅ Zoho response:", data);
 
     if (data.hostedpage?.url) {
       return NextResponse.json({ payment_url: data.hostedpage.url });
     }
 
-    console.error("Zoho error:", data);
     return NextResponse.json(
-      { error: "Failed to create subscription" },
+      { error: "Zoho returned no payment URL", details: data },
       { status: 500 }
     );
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.error("❌ create-subscription error:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

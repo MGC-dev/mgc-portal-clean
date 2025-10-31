@@ -66,49 +66,7 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
 
   const removeItem = (id: number) => setCart(cart.filter((i) => i.id !== id));
 
-  //const handlePayment = async () => {
-  // const res = await fetch('/api/zoho/subscribe', {
-  //   method: 'POST',
-  //   body: JSON.stringify({
-  //   userId: user.id,
-  //   planCode: 'your_plan_code',
-  //   customerDetails: {
-  //       display_name: user.name,
-  //       email: user.email,
-  //     }
-  //   }),
-  //   headers: { 'Content-Type': 'application/json' },
-  // });
-
-  // const data = await res.json();
-
-  // if (data.subscription && data.subscription.hostedpage.url) {
-  //   window.location.href = data.subscription.hostedpage.url;
-  // } else {
-  //   alert("Failed to create subscription.");
-  // }
-//window.location.href = '/api/zoho/subscribe';
-    // const res = await fetch('/api/zoho/subscribe', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     userEmail: 'user@example.com', // Replace with actual user email from auth
-    //     planCode: 'pro_monthly',       // Replace with your Zoho plan_code
-    //   }),
-    // });
-    // const data = await res.json();
-
-    // if (data.url) {
-    //   window.location.href = data.url; // Redirect to Zoho payment page
-    // } else {
-    //   alert('Failed to start subscription');
-    //   console.error(data);
-    // }
-
-
-//};
+  
 
 const handlePayment = async () => {
   if (!selectedPlan) {
