@@ -1,0 +1,315 @@
+"use client";
+import Sidebar from "@/components/sidebar";
+import Navbar from "@/components/navbar";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { createClient } from "@/lib/supabase";
+import { AlertBanner } from "@/components/ui/alert-banner";
+
+interface ProfileData {
+  full_name: string;
+  company_name: string;
+  phone: string;
+  email: string;
+}
+
+export default function CompanyProfilePage() {
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const [profile, setProfile] = useState<ProfileData>({
+    full_name: "",
+    company_name: "",
+    phone: "",
+    email: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState<{ variant: "success" | "error" | "info"; message: string } | null>(null);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function loadProfile() {
+      console.log("[v0] Starting to load profile, user:", user);
+      if (authLoading) {
+        // Wait for auth hydration before attempting to load profile
+        setLoading(true);
+        return;
+      }
+      if (!user) {
+        console.log("[v0] No user found after auth; stopping loader");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const timeoutMs = 15000;
+        const withTimeout = <T,>(p: PromiseLike<T>, label: string): Promise<T> => {
+          return Promise.race([
+            p,
+            new Promise<T>((_, reject) =>
+              setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+            ),
+          ]) as Promise<T>;
+        };
+        console.log("[v0] Fetching profile for user ID:", user.id);
+        const res = await fetch("/api/profile", { headers: { accept: "application/json" } });
+        const json = await res.json().catch(() => ({}));
+        console.log("[v0] Profile API result:", { status: res.status, json });
+        if (!res.ok) {
+          const msg = json?.error || "Failed to load profile";
+          console.error("[v0] Error loading profile:", msg);
+          setBanner({ variant: "error", message: msg });
+          return;
+        }
+
+        if (json?.profile) {
+          console.log("[v0] Successfully loaded profile:", json.profile);
+          setProfile(json.profile as ProfileData);
+        } else {
+          console.log("[v0] No profile found; using defaults");
+        }
+      } catch (error) {
+        console.error("[v0] Exception loading profile:", error);
+        const msg = (error as any)?.message || "Failed to load profile";
+        setBanner({ variant: "error", message: msg });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProfile();
+  }, [user, authLoading]);
+
+  const handleSave = async () => {
+    console.log("[v0] Starting to save profile...");
+    if (!user) {
+      console.log("[v0] No user found, cannot save");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      console.log(
+        "[v0] Updating profile for user:",
+        user.id,
+        "with data:",
+        profile
+      );
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: profile.full_name,
+          company_name: profile.company_name,
+          phone: profile.phone,
+        })
+        .eq("id", user.id);
+
+      console.log("[v0] Profile update result:", { error });
+
+      if (error) {
+        console.error("[v0] Error saving profile:", error);
+        setBanner({ variant: "error", message: "Error saving profile. Please try again." });
+      } else {
+        console.log("[v0] Profile saved successfully!");
+        setBanner({ variant: "success", message: "Profile saved successfully!" });
+      }
+    } catch (error) {
+      console.error("[v0] Exception saving profile:", error);
+      setBanner({ variant: "error", message: "Error saving profile. Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return null;
+  }
+
+  if (!authLoading && !user) {
+    return (
+      <div className="flex min-h-screen bg-gray-50 items-center justify-center">
+        <div className="text-center">
+          <p className="mt-4 text-gray-600">Not authenticated. Please <a href="/login" className="underline">sign in</a>.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar - hidden on mobile */}
+      <div className="hidden md:block" onClick={() => setSidebarOpen(false)}>
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
+      </div>
+      {/* Sidebar (mobile overlay) */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Blur overlay */}
+          <div
+            className="fixed inset-0 bg-black/20"
+            onClick={() => setSidebarOpen(false)}
+          />
+          {/* Sidebar drawer */}
+          <div className="relative z-50 w-64 bg-white shadow-lg">
+            <Sidebar
+              isOpen={isSidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top navbar */}
+        <header className="flex items-center justify-between gap-4 px-6 py-3 border-b bg-white">
+          <Navbar onMenuClick={() => setSidebarOpen(true)} />
+        </header>
+        {/* Main Content */}
+        <main className="flex-1 p-8">
+          {/* Page Title & Save Button */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-3xl font-bold">Company Profile</h1>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-blue-800 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {"Save Changes"}
+            </button>
+          </div>
+
+          {banner && (
+            <div className="mb-6">
+              <AlertBanner
+                variant={banner.variant}
+                message={banner.message}
+                onClose={() => setBanner(null)}
+              />
+            </div>
+          )}
+
+          {/* Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Company Information Card */}
+            <div className="bg-white rounded-2xl shadow p-6">
+              <h2 className="flex items-center space-x-2 font-semibold text-lg mb-4">
+                <span>🏢</span>
+                <span>Company Information</span>
+              </h2>
+
+              <div className="space-y-4">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.full_name}
+                    onChange={(e) =>
+                      setProfile({ ...profile, full_name: e.target.value })
+                    }
+                    className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                {/* Company Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Company Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.company_name}
+                    onChange={(e) =>
+                      setProfile({ ...profile, company_name: e.target.value })
+                    }
+                    className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your company name"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    readOnly
+                    className="w-full mt-1 border rounded-lg px-3 py-2 bg-gray-50 text-gray-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Email cannot be changed here
+                  </p>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={profile.phone}
+                    onChange={(e) =>
+                      setProfile({ ...profile, phone: e.target.value })
+                    }
+                    className="w-full mt-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your phone number"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Account Information Card */}
+            <div className="bg-white rounded-2xl shadow p-6">
+              <h2 className="flex items-center space-x-2 font-semibold text-lg mb-4">
+                <span>👤</span>
+                <span>Account Information</span>
+              </h2>
+
+              <div className="space-y-4">
+                {/* Account Status */}
+                <div className="flex items-center justify-between border rounded-lg p-3">
+                  <div>
+                    <p className="font-medium">Account Status</p>
+                    <p className="text-sm text-gray-500">Active</p>
+                  </div>
+                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                    Active
+                  </span>
+                </div>
+
+                {/* Member Since */}
+                <div className="flex items-center justify-between border rounded-lg p-3">
+                  <div>
+                    <p className="font-medium">Member Since</p>
+                    <p className="text-sm text-gray-500">
+                      {user?.created_at
+                        ? new Date(user.created_at).toLocaleDateString()
+                        : "N/A"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Role */}
+                <div className="flex items-center justify-between border rounded-lg p-3">
+                  <div>
+                    <p className="font-medium">Role</p>
+                    <p className="text-sm text-gray-500">Client</p>
+                  </div>
+                  <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                    Client
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
