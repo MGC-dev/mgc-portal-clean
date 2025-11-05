@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase";
 import { AlertBanner } from "@/components/ui/alert-banner";
+import { LoadingOverlay } from "@/components/ui/loading-overlay";
 
 interface ProfileData {
   full_name: string;
@@ -123,7 +124,7 @@ export default function CompanyProfilePage() {
   };
 
   if (loading) {
-    return null;
+    return <LoadingOverlay show={true} label="Loading company profile…" variant="default" />;
   }
 
   if (!authLoading && !user) {
@@ -145,9 +146,9 @@ export default function CompanyProfilePage() {
       {/* Sidebar (mobile overlay) */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Blur overlay */}
+          {/* Blur overlay without dark tint */}
           <div
-            className="fixed inset-0 bg-black/20"
+            className="fixed inset-0 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
           {/* Sidebar drawer */}

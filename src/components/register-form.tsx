@@ -175,15 +175,13 @@ export function RegisterForm() {
         return;
       }
 
-      // Redirect to dedicated verification route with overlay
+      // Redirect to dedicated verification route. Keep overlay until unmount.
       router.push(`/register/verify?email=${encodeURIComponent(registerData.email.trim().toLowerCase())}`);
       setResendCountdown(RESEND_COOLDOWN_SECONDS);
       // action_link removed; no magic link stored
     } catch (err) {
       console.error("[v0] Registration error:", err);
       setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -247,7 +245,7 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <LoadingOverlay show={loading} />
+      <LoadingOverlay show={loading} label="Creating your account..." variant="default" />
       {error && (
         <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
           {error}

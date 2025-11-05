@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useRouter } from "next/navigation";
 
 export default function AdminContractsPage() {
+  const { confirm, dialog } = useConfirm();
   async function parseJsonOrThrow(res: Response) {
     const ct = res.headers.get("content-type") || "";
     if (!ct.includes("application/json")) {
@@ -228,7 +230,12 @@ export default function AdminContractsPage() {
   }
 
   async function handleDelete(contractId: string) {
-    const ok = confirm("Delete this contract? This will remove the file and record.");
+    const ok = await confirm({
+      title: "Delete contract",
+      description: "This will permanently remove the file and its record.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+    });
     if (!ok) return;
     setDeletingContract(contractId);
     setMessage(null);
@@ -250,6 +257,7 @@ export default function AdminContractsPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 p-8">
+      {dialog}
       <div className="max-w-6xl mx-auto space-y-6">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Admin • Contracts</h1>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { AlertBanner } from "@/components/ui/alert-banner";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(
@@ -64,17 +65,18 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
   const total = subtotal + tax;
 
   const removeItem = (id: number) => setCart(cart.filter((i) => i.id !== id));
+  const [banner, setBanner] = useState<{ variant: "success" | "error" | "info" | "warning"; message: string } | null>(null);
 
   const handlePayment = async () => {
     if (!selectedPlan) {
-      alert("Please select a plan first.");
+      setBanner({ variant: "warning", message: "Please select a plan first." });
       return;
     }
 
     const priceNumber = parseInt(selectedPlan.price.replace(/\D/g, "")) || 0;
 
     if (!priceNumber) {
-      alert("This plan requires manual sales contact.");
+      setBanner({ variant: "info", message: "This plan requires manual sales contact." });
       return;
     }
 
@@ -93,7 +95,7 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
 
     const data = await res.json();
     if (data.payment_url) window.location.href = data.payment_url;
-    else alert("Subscription failed");
+    else setBanner({ variant: "error", message: "Subscription failed." });
   };
 
 
@@ -110,6 +112,11 @@ export default function SubscriptionCheckout({ selectedPlan }: SubscriptionCheck
           className="bg-white shadow-xl rounded-2xl p-8 h-fit lg:sticky top-8"
         >
           <h2 className="text-2xl font-bold mb-6">🛒 Your Subscription</h2>
+          {banner && (
+            <div className="mb-4">
+              <AlertBanner variant={banner.variant} message={banner.message} onClose={() => setBanner(null)} />
+            </div>
+          )}
 
           {/* Plan Toggle */}
           <div className="flex items-center justify-center mb-6">

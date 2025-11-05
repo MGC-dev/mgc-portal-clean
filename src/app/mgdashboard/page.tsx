@@ -81,9 +81,9 @@ export default function DashboardPage() {
       {/* Sidebar (mobile overlay) */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Blur overlay */}
+          {/* Blur overlay without dark tint */}
           <div
-            className="fixed inset-0 bg-black/20"
+            className="fixed inset-0 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
           {/* Sidebar drawer */}

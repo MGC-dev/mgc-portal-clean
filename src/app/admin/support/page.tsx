@@ -44,7 +44,7 @@ export default function AdminSupportPage() {
       if (!res.ok) throw new Error(json?.error || "Update failed");
       await fetchTickets();
     } catch (e: any) {
-      alert(e?.message || "Failed to update status");
+      setError(e?.message || "Failed to update status");
     }
   }
 

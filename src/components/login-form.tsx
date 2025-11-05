@@ -135,7 +135,14 @@ export function LoginForm() {
         console.error("Supabase auth error:", error);
         const msg = (error.message || "").toLowerCase();
         const status = (error as any)?.status ?? 0;
-        
+
+        // Immediate banned/suspended detection regardless of status shape
+        const isBanned = msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked");
+        if (isBanned) {
+          router.replace("/suspended");
+          return;
+        }
+
         // Handle specific error cases
         if (status === 400 && msg.includes("invalid")) {
           setError("Invalid email or password. Please check your credentials and try again.");
@@ -144,11 +151,6 @@ export function LoginForm() {
         } else if (status === 429) {
           setError("Too many login attempts. Please wait a few minutes before trying again.");
         } else if (status === 403) {
-          const isBanned = msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked");
-          if (isBanned) {
-            router.replace("/suspended");
-            return;
-          }
           setError("Access denied. Please contact support if this persists.");
         } else if (status >= 500) {
           setError("Server error occurred. Please try again.");
@@ -164,8 +166,7 @@ export function LoginForm() {
       if (data.user) {
         console.log("Login successful, establishing session...");
         setLoginData({ email: "", password: "" });
-        // Session cookies are set by the server API; just redirect
-        setLoading(false);
+        // Keep overlay active until navigation/unmount
         window.location.href = "/mgdashboard";
         return;
       }
@@ -176,10 +177,6 @@ export function LoginForm() {
     } catch (err) {
       console.error("Login error:", err);
       setError("An unexpected error occurred during login. Please check your network connection and try again.");
-      setLoading(false);
-    }
-    finally {
-      // Ensure loading overlay is dismissed in all paths
       setLoading(false);
     }
   };
@@ -200,7 +197,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <LoadingOverlay show={loading} />
+      <LoadingOverlay show={loading} label="Signing you in..." variant="default" />
       {error && (
         <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
           {error}

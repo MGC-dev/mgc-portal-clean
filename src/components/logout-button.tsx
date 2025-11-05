@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { LoadingOverlay } from "@/components/ui/loading-overlay";
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -37,19 +38,21 @@ export default function LogoutButton() {
       } else {
         router.replace("/auth/logout");
       }
-      setLoading(false);
     }
   };
 
   return (
-    <button
-      onClick={onLogout}
-      disabled={loading}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-      title="Sign out"
-    >
-      <LogOut size={16} />
-      <span>Logout</span>
-    </button>
+    <div className="relative">
+      <LoadingOverlay show={loading} label="Signing you out..." variant="default" />
+      <button
+        onClick={onLogout}
+        disabled={loading}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        title="Sign out"
+      >
+        <LogOut size={16} />
+        <span>Logout</span>
+      </button>
+    </div>
   );
 }
