@@ -126,7 +126,6 @@ export default function ContractsPage() {
   function handleCloseSigningModal() {
     setSignModalOpen(false);
     setSignContractId(null);
-    setSelectedContractFile(null);
   }
 
   return (
