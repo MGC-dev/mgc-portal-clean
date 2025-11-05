@@ -1,167 +1,202 @@
-'use client';
+"use client";
 
-import { useState} from 'react';
-import styles from '../../register/register.module.css';
-import { Hash, Eye, EyeOff } from 'react-feather';
-import Image from 'next/image';
-import { signIn } from 'next-auth/react';
-
-
-
-
-import { useSearchParams, useRouter } from 'next/navigation';
-
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export default function ForgotResetPasswordPage() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
 
-  const [email, setEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [resetMessage, setResetMessage] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [showAlert, setShowAlert] = useState(false);
-  const [forgotMessage, setForgotMessage] = useState('');
-  const router = useRouter();
-
+  const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loadingForgot, setLoadingForgot] = useState(false);
+  const [loadingReset, setLoadingReset] = useState(false);
 
   const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Call your API to send reset email
-    
+    setError(null);
+    setLoadingForgot(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-
       const data = await res.json();
-      setForgotMessage(data.message || 'If the email exists, a reset link has been sent.');
-      setMessage('Password reset link has been sent to your email.');
-    } catch (error) {
-      setForgotMessage('Something went wrong. Please try again later!');
+      if (!res.ok) {
+        setError(data.error || "Failed to send reset link");
+      } else {
+        setMessage(data.message || "If the email exists, a reset link has been sent.");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again later!");
+    } finally {
+      setLoadingForgot(false);
     }
-  };
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
   };
 
   const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
     if (newPassword !== confirmPassword) {
-      setMessage("Passwords don't match.");
+      setError("Passwords don't match.");
       return;
     }
-
-    // Call your API to reset password using token
-    setMessage('Password has been reset successfully!');
+    setLoadingReset(true);
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword }),
       });
       const data = await res.json();
-      setResetMessage(data.message || 'Password has been reset successfully!');
-    } catch (error) {
-      setResetMessage('Reset failed.');
+      if (!res.ok) {
+        setError(data.error || "Reset failed.");
+      } else {
+        setResetMessage(data.message || "Password has been reset successfully!");
+      }
+    } catch (err: any) {
+      setError(err?.message || "Reset failed.");
+    } finally {
+      setLoadingReset(false);
     }
-  };
-    const goToLogin = () => {
-    router.push('/register');
   };
 
   return (
-    <div className={styles.wrapper} style={{  }}>
-       <div
-        style={{
-          position: 'absolute',
-          top: '1rem',
-          left: '1rem',
-        }}
-      >
-        <Image src="/MG logo.png" alt="Company Logo" width={80} height={30} />
-      </div>
-     
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      {/* Background */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url('/modern-office-building.png')` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-slate-900/50 to-blue-800/60" />
 
-      <div className={styles.formContainer}>
-        {showAlert && (
-          <div className={styles.alertBox}>
-            {error}
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-md space-y-6">
+        {/* Logo/Header */}
+        <div className="text-center space-y-2">
+          <div className="mx-auto w-16 h-16 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg flex items-center justify-center shadow-xl overflow-hidden">
+            <Image src="/logo.png" alt="MG Consulting logo" width={48} height={48} priority style={{ objectFit: "contain" }} />
           </div>
-        )}
-        {/* Forgot Password Form */}
-        <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="max-w-md w-full  p-8 rounded " style={{padding: '65px'}}>
-        <h2 className={styles.formTitle}>
-          {token ? 'Reset Password' : 'Forgot Password'}
-        </h2>
-         <p className={styles.msg}>Enter your email address below and we'll send you a link to reset your password.</p>
-        {message && (
-          <div className="mb-4 text-center text-sm text-green-600">
-            {message}
-          </div>
-        )}
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">MG Consulting Firm</h1>
+          <p className="text-white/90 drop-shadow-md">
+            {token ? "Reset your password" : "Forgot your password"}
+          </p>
+        </div>
 
-        {!token ? (
-          <>
-          <form onSubmit={handleForgotPassword}>
-            <label className="block mb-2 text-sm font-medium mt-4">Email</label>
-            <input
-              type="email"
-              className="w-full px-8 py-2 border rounded mb-6"
-              value={email}
-              onChange={handleEmailChange}
-              required
-            />
-            <button
-              type="submit"
-              className={styles.button}
-            >
-              Send Reset Link
-            </button>
-            <p onClick={goToLogin} className={styles.toggleText}>
-              Go to Login?
-            </p>
-          </form>
-        {forgotMessage && <p>{forgotMessage}</p>}
-        </>
-      ) : (
-        <>
-          <form onSubmit={handleResetPassword}>
-            <label className="block mb-2 text-sm font-medium">New Password</label>
-            <input
-              type="password"
-              className="w-full px-4 py-2 border rounded mb-4"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
-            <label className="block mb-2 text-sm font-medium">Confirm Password</label>
-            <input
-              type="password"
-              className="w-full px-4 py-2 border rounded mb-4"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-            <button
-              type="submit"
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-            >
-              Reset Password
-            </button>
-          </form>
-          {resetMessage && <p>{resetMessage}</p>}
-        </>
-        )}
+        <Card className="bg-white/15 backdrop-blur-xl border border-white/20 shadow-2xl">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-xl text-white">{token ? "Reset Password" : "Forgot Password"}</CardTitle>
+            <CardDescription className="text-white/80">
+              {token
+                ? "Enter and confirm a new password for your account"
+                : "Enter your email to receive a password reset link"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            {!token ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white">Email Address</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:border-white/40 focus:ring-white/20"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  disabled={loadingForgot}
+                >
+                  {"Send Reset Link"}
+                </Button>
+                {message && (
+                  <p className="text-center text-sm text-green-300">{message}</p>
+                )}
+                <div className="text-center">
+                  <Link href="/login" className="text-blue-200 hover:text-white underline underline-offset-2 text-sm">
+                    Back to login
+                  </Link>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="text-white">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    name="newPassword"
+                    type="password"
+                    placeholder="Enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:border-white/40 focus:ring-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-white">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:border-white/40 focus:ring-white/20"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  disabled={loadingReset}
+                >
+                  {"Reset Password"}
+                </Button>
+                {resetMessage && (
+                  <p className="text-center text-sm text-green-300">{resetMessage}</p>
+                )}
+                <div className="text-center">
+                  <Link href="/login" className="text-blue-200 hover:text-white underline underline-offset-2 text-sm">
+                    Back to login
+                  </Link>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Footer Links */}
+        <div className="text-center space-y-2">
+          <div className="flex justify-center space-x-4 text-xs text-white/80 drop-shadow-sm">
+            <Link href="/privacy" className="hover:text-white underline underline-offset-2">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-white underline underline-offset-2">Terms of Service</Link>
+          </div>
+        </div>
       </div>
-    </div>
-      </div>
-       
     </div>
   );
 }

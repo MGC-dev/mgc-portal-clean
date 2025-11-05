@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   return (
@@ -24,15 +25,20 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md space-y-6">
         {/* Logo/Header */}
         <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg flex items-center justify-center shadow-xl">
-            <span className="text-2xl font-bold text-white">MG</span>
+          <div className="mx-auto w-16 h-16 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg flex items-center justify-center shadow-xl overflow-hidden">
+            <Image
+              src="/logo.png"
+              alt="MG Consulting logo"
+              width={48}
+              height={48}
+              priority
+              style={{ objectFit: "contain" }}
+            />
           </div>
           <h1 className="text-3xl font-bold text-white drop-shadow-lg">
             MG Consulting Firm
           </h1>
-          <p className="text-white/90 drop-shadow-md">
-            Welcome back to your client portal !
-          </p>
+          <p className="text-white/90 drop-shadow-md">Welcome back</p>
         </div>
 
         <Card className="bg-white/15 backdrop-blur-xl border border-white/20 shadow-2xl">

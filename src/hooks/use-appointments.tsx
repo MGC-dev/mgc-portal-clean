@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getUserAppointments, type Appointment } from "@/lib/appointments";
+import { createClient } from "@/lib/supabase";
 
 export function useAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -18,7 +19,35 @@ export function useAppointments() {
       if (error) {
         setError(error);
       } else {
-        setAppointments(data || []);
+        let base = data || [];
+
+        // Try to merge Calendly events for the current user's email (optional)
+        try {
+          const supabase = createClient();
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          const email = user?.email;
+          if (email) {
+            const resp = await fetch(`/api/calendly/events?email=${encodeURIComponent(email)}`);
+            if (resp.ok) {
+              const json = await resp.json();
+              const calEvents: Appointment[] = json?.data || [];
+
+              // Deduplicate by start_time+title combo
+              const byKey = new Map<string, Appointment>();
+              [...base, ...calEvents].forEach((apt) => {
+                const key = `${apt.start_time}|${apt.title}`;
+                if (!byKey.has(key)) byKey.set(key, apt);
+              });
+              base = Array.from(byKey.values());
+            }
+          }
+        } catch (mergeErr) {
+          // Ignore Calendly merge errors; keep Supabase data
+        }
+
+        setAppointments(base);
       }
     } catch (err) {
       setError("Failed to fetch appointments");
@@ -34,14 +63,11 @@ export function useAppointments() {
   const upcomingAppointments = appointments.filter((apt) => {
     const appointmentDate = new Date(apt.start_time);
     const now = new Date();
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-    return (
-      appointmentDate >= now &&
-      appointmentDate <= nextWeek &&
-      apt.status === "scheduled"
-    );
-  });
+    return appointmentDate >= now && apt.status === "scheduled";
+  }).sort(
+    (a, b) =>
+      new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+  );
 
   const todaysAppointments = appointments.filter((apt) => {
     const appointmentDate = new Date(apt.start_time);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 // Removed framer-motion import
 import { createAppointment } from "@/lib/appointments";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { AlertBanner } from "@/components/ui/alert-banner";
+import { generateTimeSlots, isSlotBooked } from "@/lib/scheduling";
+import { getUserAppointments, type Appointment } from "@/lib/appointments";
 
 // Add helper to parse AM/PM time strings
 function parseTimeString(timeStr: string): { hours: number; minutes: number } | null {
@@ -30,7 +33,9 @@ export type NewAppointment = {
   type: "Virtual Meeting" | "In-Person";
 };
 
-const timeSlots = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "03:00 PM"];
+// Default work hours and interval for generating slots
+const WORK_HOURS = { startHour: 9, endHour: 17 } as const;
+const DEFAULT_INTERVAL_MINUTES = 30;
 
 export default function AppointmentScheduler({
   onConfirm,
@@ -46,23 +51,44 @@ export default function AppointmentScheduler({
   // Replace old view + selected state with clear date/time selection
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | undefined>(undefined);
+  const [duration, setDuration] = useState<number>(30);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [form, setForm] = useState({ name: "", email: "", notes: "", type: "Virtual Meeting" as NewAppointment["type"] });
   const [open, setOpen] = useState(false);
+  const [banner, setBanner] = useState<{
+    variant: "success" | "error" | "info" | "warning";
+    message: string;
+  } | null>(null);
+
+  // Fetch appointments to prevent double-booking and show availability
+  useEffect(() => {
+    async function fetchApts() {
+      const { data, error } = await getUserAppointments();
+      if (!error && data) setAppointments(data);
+    }
+    fetchApts();
+  }, []);
+
+  // Generate time slots for the selected date
+  const generatedSlots = useMemo(() => {
+    if (!selectedDate) return [] as { label: string; start: Date }[];
+    return generateTimeSlots(selectedDate, DEFAULT_INTERVAL_MINUTES, WORK_HOURS);
+  }, [selectedDate]);
 
   async function performCreation(newApt: NewAppointment) {
     if (!selectedDate) {
-      alert("Please select a date");
+      setBanner({ variant: "warning", message: "Please select a date" });
       return;
     }
     const time = parseTimeString(newApt.time);
     if (!time) {
-      alert("Failed to parse selected time");
+      setBanner({ variant: "warning", message: "Failed to parse selected time" });
       return;
     }
     const start = new Date(selectedDate);
     start.setHours(time.hours, time.minutes, 0, 0);
     const end = new Date(start);
-    end.setHours(start.getHours() + 1);
+    end.setMinutes(start.getMinutes() + duration);
 
     const { error } = await createAppointment({
       title: newApt.title,
@@ -72,7 +98,7 @@ export default function AppointmentScheduler({
     });
 
     if (error) {
-      alert(`Failed to create appointment: ${error}`);
+      setBanner({ variant: "error", message: `Failed to create appointment: ${error}` });
       return;
     }
     onAppointmentCreated?.();
@@ -80,11 +106,11 @@ export default function AppointmentScheduler({
 
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime) {
-      alert("Please select a date and time!");
+      setBanner({ variant: "warning", message: "Please select a date and time!" });
       return;
     }
     if (!form.name.trim() || !form.email.trim() || !form.type.trim() || !form.notes.trim()) {
-      alert("Please fill all fields");
+      setBanner({ variant: "warning", message: "Please fill all fields" });
       return;
     }
     const newApt: NewAppointment = {
@@ -114,6 +140,16 @@ export default function AppointmentScheduler({
           </button>
         )}
       </div>
+
+      {banner && (
+        <div className="p-4">
+          <AlertBanner
+            variant={banner.variant}
+            message={banner.message}
+            onClose={() => setBanner(null)}
+          />
+        </div>
+      )}
 
       {/* Body */}
       <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -145,9 +181,28 @@ export default function AppointmentScheduler({
                 <SelectValue placeholder={selectedDate ? "Select a time" : "Select a date first"} />
               </SelectTrigger>
               <SelectContent className="max-h-64">
-                {timeSlots.map((slot) => (
-                  <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                ))}
+                {generatedSlots.map(({ label, start }) => {
+                  const booked = isSlotBooked(start, duration, appointments);
+                  return (
+                    <SelectItem key={label} value={label} disabled={booked}>{label}{booked ? " (unavailable)" : ""}</SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <p className="mt-2 text-xs text-gray-500">Times shown in your local timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+          </div>
+
+          <div>
+            <Label className="mb-2 block">Duration</Label>
+            <Select value={String(duration)} onValueChange={(val) => setDuration(parseInt(val, 10))}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15">15 minutes</SelectItem>
+                <SelectItem value="30">30 minutes</SelectItem>
+                <SelectItem value="45">45 minutes</SelectItem>
+                <SelectItem value="60">60 minutes</SelectItem>
               </SelectContent>
             </Select>
           </div>

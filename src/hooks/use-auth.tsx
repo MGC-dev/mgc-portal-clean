@@ -39,13 +39,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
+  const withTimeout = async <T,>(p: Promise<T>, ms = 2500): Promise<T | null> => {
+    return new Promise<T | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), ms);
+      p.then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      }).catch(() => {
+        clearTimeout(timer);
+        resolve(null);
+      });
+    });
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("[v0] Error fetching profile:", error);
@@ -121,8 +134,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase.auth]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Request a global sign-out to ensure all tabs and cookies are cleared
+    await withTimeout(supabase.auth.signOut({ scope: 'global' }), 6000);
+
+    // Best-effort: verify session cleared; retry once if needed
+    const { data: first } = await supabase.auth.getSession();
+    if (first?.session) {
+      await new Promise((r) => setTimeout(r, 500));
+      const { data: second } = await supabase.auth.getSession();
+      if (second?.session) {
+        // Proceed anyway; middleware will treat you as authenticated if cookie remains
+      }
+    }
+
+    setUser(null);
     setProfile(null);
+    setLoading(false);
   };
 
   return (

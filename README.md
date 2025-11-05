@@ -20,8 +20,6 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-<<<<<<< HEAD
-=======
 ## Authentication & RBAC
 
 This app uses Supabase Auth with a simple RBAC model:
@@ -59,7 +57,6 @@ Key tables included:
 - Create an admin by setting `profiles.role = 'admin'` for a user, or inserting into `role_assignments` with role `admin`.
 - Navigate to `/admin` (middleware restricts access to admins; non-admins are redirected).
 
->>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

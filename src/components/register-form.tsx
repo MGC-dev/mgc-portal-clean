@@ -175,7 +175,8 @@ export function RegisterForm() {
         return;
       }
 
-      setAwaitingConfirmation(true);
+      // Redirect to dedicated verification route with overlay
+      router.push(`/register/verify?email=${encodeURIComponent(registerData.email.trim().toLowerCase())}`);
       setResendCountdown(RESEND_COOLDOWN_SECONDS);
       // action_link removed; no magic link stored
     } catch (err) {
@@ -246,7 +247,7 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <LoadingOverlay show={loading} label="Processing..." />
+      <LoadingOverlay show={loading} />
       {error && (
         <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
           {error}
@@ -507,7 +508,7 @@ export function RegisterForm() {
         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
         disabled={loading}
       >
-        {loading ? "Creating Account..." : "Create Account"}
+        {"Create Account"}
       </Button>
     </form>
   );

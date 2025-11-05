@@ -4,6 +4,7 @@ import Navbar from "@/components/navbar";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/lib/supabase";
+import { AlertBanner } from "@/components/ui/alert-banner";
 
 interface ProfileData {
   full_name: string;
@@ -14,7 +15,7 @@ interface ProfileData {
 
 export default function CompanyProfilePage() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<ProfileData>({
     full_name: "",
     company_name: "",
@@ -23,45 +24,62 @@ export default function CompanyProfilePage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState<{ variant: "success" | "error" | "info"; message: string } | null>(null);
 
   const supabase = createClient();
 
   useEffect(() => {
     async function loadProfile() {
       console.log("[v0] Starting to load profile, user:", user);
+      if (authLoading) {
+        // Wait for auth hydration before attempting to load profile
+        setLoading(true);
+        return;
+      }
       if (!user) {
-        console.log("[v0] No user found, skipping profile load");
+        console.log("[v0] No user found after auth; stopping loader");
+        setLoading(false);
         return;
       }
 
       try {
+        const timeoutMs = 15000;
+        const withTimeout = <T,>(p: PromiseLike<T>, label: string): Promise<T> => {
+          return Promise.race([
+            p,
+            new Promise<T>((_, reject) =>
+              setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+            ),
+          ]) as Promise<T>;
+        };
         console.log("[v0] Fetching profile for user ID:", user.id);
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("full_name, company_name, phone, email")
-          .eq("id", user.id)
-          .single();
-
-        console.log("[v0] Profile query result:", { data, error });
-
-        if (error) {
-          console.error("[v0] Error loading profile:", error);
+        const res = await fetch("/api/profile", { headers: { accept: "application/json" } });
+        const json = await res.json().catch(() => ({}));
+        console.log("[v0] Profile API result:", { status: res.status, json });
+        if (!res.ok) {
+          const msg = json?.error || "Failed to load profile";
+          console.error("[v0] Error loading profile:", msg);
+          setBanner({ variant: "error", message: msg });
           return;
         }
 
-        if (data) {
-          console.log("[v0] Successfully loaded profile:", data);
-          setProfile(data);
+        if (json?.profile) {
+          console.log("[v0] Successfully loaded profile:", json.profile);
+          setProfile(json.profile as ProfileData);
+        } else {
+          console.log("[v0] No profile found; using defaults");
         }
       } catch (error) {
         console.error("[v0] Exception loading profile:", error);
+        const msg = (error as any)?.message || "Failed to load profile";
+        setBanner({ variant: "error", message: msg });
       } finally {
         setLoading(false);
       }
     }
 
     loadProfile();
-  }, [user, supabase]);
+  }, [user, authLoading]);
 
   const handleSave = async () => {
     console.log("[v0] Starting to save profile...");
@@ -91,25 +109,28 @@ export default function CompanyProfilePage() {
 
       if (error) {
         console.error("[v0] Error saving profile:", error);
-        alert("Error saving profile. Please try again.");
+        setBanner({ variant: "error", message: "Error saving profile. Please try again." });
       } else {
         console.log("[v0] Profile saved successfully!");
-        alert("Profile saved successfully!");
+        setBanner({ variant: "success", message: "Profile saved successfully!" });
       }
     } catch (error) {
       console.error("[v0] Exception saving profile:", error);
-      alert("Error saving profile. Please try again.");
+      setBanner({ variant: "error", message: "Error saving profile. Please try again." });
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
+    return null;
+  }
+
+  if (!authLoading && !user) {
     return (
       <div className="flex min-h-screen bg-gray-50 items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
+          <p className="mt-4 text-gray-600">Not authenticated. Please <a href="/login" className="underline">sign in</a>.</p>
         </div>
       </div>
     );
@@ -124,9 +145,9 @@ export default function CompanyProfilePage() {
       {/* Sidebar (mobile overlay) */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Dark overlay */}
+          {/* Blur overlay */}
           <div
-            className="fixed inset-0 bg-black bg-opacity-50"
+            className="fixed inset-0 bg-black/20"
             onClick={() => setSidebarOpen(false)}
           />
           {/* Sidebar drawer */}
@@ -153,9 +174,19 @@ export default function CompanyProfilePage() {
               disabled={saving}
               className="bg-blue-800 text-white px-6 py-2 rounded-lg shadow hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {"Save Changes"}
             </button>
           </div>
+
+          {banner && (
+            <div className="mb-6">
+              <AlertBanner
+                variant={banner.variant}
+                message={banner.message}
+                onClose={() => setBanner(null)}
+              />
+            </div>
+          )}
 
           {/* Grid Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

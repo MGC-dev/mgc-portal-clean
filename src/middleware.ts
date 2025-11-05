@@ -81,8 +81,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect any /auth requests to /register
-  if (request.nextUrl.pathname.startsWith("/auth")) {
+  // Redirect /auth requests to /register, except explicit logout route
+  if (request.nextUrl.pathname.startsWith("/auth") && request.nextUrl.pathname !== "/auth/logout") {
     return NextResponse.redirect(new URL("/register", request.url));
   }
 

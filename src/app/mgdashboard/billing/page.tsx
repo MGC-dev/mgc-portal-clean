@@ -33,9 +33,9 @@ export default function BillingPage() {
              {/* Sidebar (mobile overlay) */}
             {isSidebarOpen && (
               <div className="fixed inset-0 z-50 flex">
-                {/* Dark overlay */}
+                {/* Blur overlay */}
                 <div
-                  className="fixed inset-0 bg-black bg-opacity-20"
+                  className="fixed inset-0 bg-black/20"
                   onClick={() => setSidebarOpen(false)}
                 />
                 {/* Sidebar drawer */}

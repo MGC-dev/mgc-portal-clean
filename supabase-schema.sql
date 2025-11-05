@@ -37,13 +37,10 @@ alter table public.profiles
 alter table public.profiles
   add constraint profiles_role_check check (role in ('client','provider','admin','support','super_admin'));
 
-<<<<<<< HEAD
-=======
 -- suspension flag (used for UI and app logic; admin banning handled via auth admin)
 alter table public.profiles
   add column if not exists suspended boolean not null default false;
 
->>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
 -- role assignments (global roles)
 create table if not exists public.role_assignments (
   id uuid primary key default gen_random_uuid(),
@@ -294,9 +291,6 @@ grant select on table public.profiles to anon;
 -- Add required grants for appointments used by client sessions
 grant select, insert, update on table public.appointments to authenticated;
 grant select on table public.appointments to anon;
-<<<<<<< HEAD
-grant select on table public.appointments to anon;
-=======
 grant select on table public.appointments to anon;
 
 -- =====================
@@ -360,18 +354,152 @@ alter table public.resources enable row level security;
 drop policy if exists resources_select_all on public.resources;
 create policy resources_select_all on public.resources for select using (true);
 drop policy if exists resources_admin_manage on public.resources;
-create policy resources_admin_manage on public.resources for all using (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin'))) with check (exists (select 1 from public.role_assignments where user_id = auth.uid() and role in ('admin','super_admin')));
+create policy resources_admin_manage on public.resources for all
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role in ('admin','super_admin')
+    )
+    or exists (
+      select 1 from public.role_assignments ra
+      where ra.user_id = auth.uid() and ra.role in ('admin','super_admin')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role in ('admin','super_admin')
+    )
+    or exists (
+      select 1 from public.role_assignments ra
+      where ra.user_id = auth.uid() and ra.role in ('admin','super_admin')
+    )
+  );
 
 -- Grants for new tables
 grant select, insert, update on table public.contracts to authenticated;
 grant select on table public.contracts to anon;
 grant all privileges on table public.contracts to service_role;
 
+-- Support tickets grants
+grant select, insert, update on table public.support_tickets to authenticated;
+grant all privileges on table public.support_tickets to service_role;
+
+-- Add optional column for storing signature asset path
+alter table public.contracts add column if not exists signature_path text;
+-- Zoho Sign integration fields
+
+-- Support tickets table and policies
+-- Create table if it doesn't exist
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'support_tickets'
+  ) then
+    create extension if not exists pgcrypto;
+
+    create table public.support_tickets (
+      id uuid primary key default gen_random_uuid(),
+      user_id uuid,
+      subject text not null,
+      description text not null,
+      status text not null default 'open',
+      created_at timestamptz not null default now()
+    );
+  end if;
+end $$;
+
+-- Enable RLS and add user-scoped policies
+alter table public.support_tickets enable row level security;
+
+-- Allow users to read their own tickets
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'support_tickets' and policyname = 'support_tickets_select_own'
+  ) then
+    create policy support_tickets_select_own
+      on public.support_tickets
+      for select
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Allow users to insert their own tickets
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'support_tickets' and policyname = 'support_tickets_insert_own'
+  ) then
+    create policy support_tickets_insert_own
+      on public.support_tickets
+      for insert
+      with check (auth.uid() = user_id);
+  end if;
+end $$;
+
+-- Admin updates should use the service role and bypass RLS
+alter table public.contracts add column if not exists zoho_request_id text;
+alter table public.contracts add column if not exists zoho_document_id text;
+alter table public.contracts add column if not exists zoho_sign_url text;
+alter table public.contracts add column if not exists signed_file_url text;
+
 grant select, insert, update on table public.session_recaps to authenticated;
 grant select on table public.session_recaps to anon;
 grant all privileges on table public.session_recaps to service_role;
 
-grant select on table public.resources to authenticated;
+grant select, insert, update, delete on table public.resources to authenticated;
 grant select on table public.resources to anon;
 grant all privileges on table public.resources to service_role;
->>>>>>> 2ef1aad7485db8969a7c706a086afa13e5083788
+
+-- =====================
+-- Storage bucket and policies for resources uploads
+-- =====================
+
+-- Ensure the 'resources' storage bucket exists and is public
+insert into storage.buckets (id, name, public)
+values ('resources', 'resources', true)
+on conflict (id) do nothing;
+
+-- Storage RLS policies to allow public read and authenticated uploads
+drop policy if exists resources_public_read on storage.objects;
+create policy resources_public_read on storage.objects for select
+  using (bucket_id = 'resources');
+
+drop policy if exists resources_authenticated_upload on storage.objects;
+create policy resources_authenticated_upload on storage.objects for insert to authenticated
+  with check (bucket_id = 'resources' and auth.uid() is not null);
+
+drop policy if exists resources_owner_update on storage.objects;
+create policy resources_owner_update on storage.objects for update to authenticated
+  using (bucket_id = 'resources' and owner = auth.uid())
+  with check (bucket_id = 'resources' and owner = auth.uid());
+
+drop policy if exists resources_owner_delete on storage.objects;
+create policy resources_owner_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'resources' and owner = auth.uid());
+
+-- Optional: allow admins to manage any object in 'resources' bucket
+drop policy if exists resources_admin_manage_storage on storage.objects;
+create policy resources_admin_manage_storage on storage.objects for all to authenticated
+  using (
+    bucket_id = 'resources' and (
+      exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('admin','super_admin'))
+      or exists (select 1 from public.role_assignments ra where ra.user_id = auth.uid() and ra.role in ('admin','super_admin'))
+    )
+  )
+  with check (
+    bucket_id = 'resources' and (
+      exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('admin','super_admin'))
+      or exists (select 1 from public.role_assignments ra where ra.user_id = auth.uid() and ra.role in ('admin','super_admin'))
+    )
+  );
+-- Storage buckets for contracts and signed contracts
+insert into storage.buckets (id, name, public)
+values ('contracts', 'contracts', false)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('contracts-signed', 'contracts-signed', false)
+on conflict (id) do nothing;

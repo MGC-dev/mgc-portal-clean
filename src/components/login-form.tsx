@@ -34,6 +34,60 @@ export function LoginForm() {
     }
   }, []);
 
+  const withTimeout = async <T,>(p: Promise<T>, ms = 15000): Promise<T | null> => {
+    return new Promise<T | null>((resolve) => {
+      const timer = setTimeout(() => resolve(null), ms);
+      p.then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      }).catch((err) => {
+        clearTimeout(timer);
+        console.error("Auth request failed:", err);
+        resolve(null);
+      });
+    });
+  };
+
+  const attemptSignIn = async (email: string, password: string, retryCount = 0): Promise<any> => {
+    const maxRetries = 2;
+
+    try {
+      console.log(`Sign-in attempt ${retryCount + 1}/${maxRetries + 1} via server API`);
+
+      const res = await withTimeout(
+        fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({ email, password }),
+        }),
+        12000
+      );
+
+      if (!res && retryCount < maxRetries) {
+        console.log(`Attempt ${retryCount + 1} timed out, retrying...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return attemptSignIn(email, password, retryCount + 1);
+      }
+
+      if (!res) return null;
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { data: {}, error: { message: json?.error || "Authentication failed", status: res.status } };
+      }
+
+      return { data: { user: json?.user || null }, error: null };
+    } catch (error) {
+      console.error(`Sign-in attempt ${retryCount + 1} failed:`, error);
+      if (retryCount < maxRetries) {
+        console.log(`Retrying after error...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return attemptSignIn(email, password, retryCount + 1);
+      }
+      throw error;
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginData((prev) => ({
@@ -64,43 +118,73 @@ export function LoginForm() {
         return;
       }
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: loginData.email,
-        password: loginData.password,
-      });
+      console.log("Starting authentication with retry logic...");
+      const result = await attemptSignIn(loginData.email, loginData.password);
+
+      if (!result) {
+        setError(
+          "Authentication failed after multiple attempts. This may indicate a network issue or service problem. Please try again in a few minutes or contact support if the issue persists."
+        );
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = result;
 
       if (error) {
+        console.error("Supabase auth error:", error);
         const msg = (error.message || "").toLowerCase();
         const status = (error as any)?.status ?? 0;
-        // Only redirect to /suspended when Supabase explicitly blocks sign-in
-        const isBanned = status === 403 && (msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked"));
-        if (isBanned) {
-          router.replace("/suspended");
-          return;
+        
+        // Handle specific error cases
+        if (status === 400 && msg.includes("invalid")) {
+          setError("Invalid email or password. Please check your credentials and try again.");
+        } else if (status === 422 && msg.includes("email")) {
+          setError("Please enter a valid email address.");
+        } else if (status === 429) {
+          setError("Too many login attempts. Please wait a few minutes before trying again.");
+        } else if (status === 403) {
+          const isBanned = msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked");
+          if (isBanned) {
+            router.replace("/suspended");
+            return;
+          }
+          setError("Access denied. Please contact support if this persists.");
+        } else if (status >= 500) {
+          setError("Server error occurred. Please try again.");
+        } else if (msg.includes("network") || msg.includes("timeout") || msg.includes("connection")) {
+          setError("Network connection issue detected. Please check your internet connection and try again.");
+        } else {
+          setError(error.message || "Authentication failed. Please try again.");
         }
-        setError(error.message);
         setLoading(false);
         return;
       }
 
       if (data.user) {
+        console.log("Login successful, establishing session...");
         setLoginData({ email: "", password: "" });
-        // Add a small delay to ensure state updates complete
-        setTimeout(() => {
-          router.push("/mgdashboard");
-        }, 100);
+        // Session cookies are set by the server API; just redirect
+        setLoading(false);
+        window.location.href = "/mgdashboard";
         return;
       }
 
       // If we get here, something unexpected happened
-      setError("Login failed. Please try again.");
+      setError("Login failed unexpectedly. Please try again or contact support.");
       setLoading(false);
     } catch (err) {
       console.error("Login error:", err);
-      setError("An unexpected error occurred. Please try again.");
+      setError("An unexpected error occurred during login. Please check your network connection and try again.");
+      setLoading(false);
+    }
+    finally {
+      // Ensure loading overlay is dismissed in all paths
       setLoading(false);
     }
   };
+
+  // Diagnostics removed
 
   if (clientError) {
     return (
@@ -116,7 +200,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <LoadingOverlay show={loading} label="Signing in..." />
+      <LoadingOverlay show={loading} />
       {error && (
         <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
           {error}
@@ -157,7 +241,7 @@ export function LoginForm() {
 
       <div className="flex items-center justify-between">
         <Link
-          href="/forgot-password"
+          href="/register/forgotpassword"
           className="text-sm text-blue-200 hover:text-white"
         >
           Forgot password?
@@ -169,7 +253,7 @@ export function LoginForm() {
         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
         disabled={loading}
       >
-        {loading ? "Signing in..." : "Sign In"}
+        {"Sign In"}
       </Button>
     </form>
   );

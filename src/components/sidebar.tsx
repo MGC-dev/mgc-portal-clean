@@ -16,6 +16,7 @@ import {
   Building2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const menuItems = [
   {
@@ -27,11 +28,6 @@ const menuItems = [
     name: "Resource Library",
     href: "/mgdashboard/resources",
     icon: BookText,
-  },
-  {
-    name: "Subscription",
-    href: "/mgdashboard/subscribe",
-    icon: CreditCard,
   },
   {
     name: "My Appointments",
@@ -47,11 +43,6 @@ const menuItems = [
     name: "Contracts & Agreements",
     href: "/mgdashboard/contracts",
     icon: FileText,
-  },
-  {
-    name: "Session Recaps",
-    href: "/mgdashboard/sessions",
-    icon: StickyNote,
   },
   {
     name: "Support",
@@ -78,7 +69,7 @@ export default function Sidebar({
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-30 z-40 md:hidden"
+          className="fixed inset-0 bg-black/20 z-40 md:hidden"
           onClick={onClose}
         />
       )}
@@ -93,8 +84,17 @@ export default function Sidebar({
         aria-label="Primary"
       >
         <div className="flex items-center space-x-2 mb-6">
-          <div className="bg-blue-800 text-white font-bold p-2 rounded">MG</div>
-          <span className="font-semibold text-lg">MG Consulting</span>
+          <div className="h-8 w-8 rounded overflow-hidden flex items-center justify-center bg-white">
+            <Image
+              src="/logo.png"
+              alt="MG Consulting logo"
+              width={32}
+              height={32}
+              priority
+              style={{ objectFit: "contain" }}
+            />
+          </div>
+          <span className="font-semibold text-lg">MG Consulting Firm</span>
         </div>
 
         <nav className="space-y-1">

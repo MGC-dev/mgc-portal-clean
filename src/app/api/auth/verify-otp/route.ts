@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hashCode } from "@/lib/otp-store";
 import { createAdminSupabaseClient } from "@/lib/supabase-server";
+import { Resend } from "resend";
 
 // POST /api/auth/verify-otp
 // Body: { email: string, code: string }
@@ -89,6 +90,63 @@ export async function POST(request: Request) {
 
       if (profileError) {
         return NextResponse.json({ error: profileError.message }, { status: 500 });
+      }
+
+      // Send onboarding email after successful verification and profile upsert
+      try {
+        if (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          const clientName = (meta.full_name || "Client") as string;
+          
+          const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; line-height: 1.6;">
+              
+              <div style="text-align: center; margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+                <h1 style="color: #2c3e50; font-size: 24px; margin: 0;">🏢 MG Consulting Firm LLC</h1>
+              </div>
+
+              <h2 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0;">Welcome ${clientName}!</h2>
+              
+              <p style="margin: 0 0 15px 0; color: #333;">We are thrilled to welcome you to MG Consulting Firm LLC! We're excited to partner with you and help your organization achieve its goals.</p>
+              
+              <p style="margin: 0 0 20px 0; color: #333;">To ensure a smooth start, we'd like to invite you to schedule your onboarding session.</p>
+              
+              <div style="background-color: #e8f4f8; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #2c3e50; font-size: 18px; margin: 0 0 10px 0;">👋 Meet Melissa Houser</h3>
+                <p style="margin: 0; color: #333;">During your onboarding session, you'll meet with Melissa Houser, our Principal Consultant. Melissa brings extensive experience to guide you through our consulting framework.</p>
+              </div>
+              
+              <div style="text-align: center; margin: 25px 0;">
+                <a href="https://calendly.com/mgconsultingfirm/onboarding-call" style="display: inline-block; background-color: #3498db; color: white; text-decoration: none; padding: 15px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">📅 Schedule Your Onboarding</a>
+              </div>
+              
+              <h3 style="color: #2c3e50; font-size: 18px; margin: 20px 0 10px 0;">What We'll Cover:</h3>
+              <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #333;">
+                <li>Our consulting framework and approach</li>
+                <li>Your goals and desired outcomes</li>
+                <li>Key milestones for our engagement</li>
+                <li>Any questions you may have</li>
+              </ul>
+              
+              <p style="margin: 20px 0 0 0; color: #333;">We look forward to connecting with you soon!</p>
+              
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                <p style="margin: 0; color: #666;">Best regards,<br><strong>The MG Consulting Team</strong></p>
+              </div>
+              
+            </div>
+          `;
+          
+          await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL,
+            to: normalizedEmail,
+            subject: "Welcome to MG Consulting Firm – Schedule Your Onboarding",
+            html,
+          });
+        }
+      } catch (e) {
+        // Do not fail verification if email sending fails
+        console.error("Onboarding email send failed:", e);
       }
     }
 

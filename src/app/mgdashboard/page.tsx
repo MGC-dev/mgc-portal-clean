@@ -10,6 +10,8 @@ import {
   TrendingUp,
   ExternalLink,
   CheckCircle2,
+  HelpCircle,
+  Building2,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/sidebar";
@@ -17,9 +19,8 @@ import Navbar from "@/components/navbar";
 import { motion } from "framer-motion";
 // import AppointmentTimeline from "./UpcomingAppointments";
 // import InvoiceDonut from "./InvoiceChartFix";
-import AppointmentScheduler from "@/components/appointment-scheduler";
-import AppointmentCard from "@/components/appointment-card";
-import { useAppointments } from "@/hooks/use-appointments";
+// Scheduling handled via Calendly; in-app scheduler removed
+import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase";
@@ -68,69 +69,7 @@ export default function DashboardPage() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
-  const { appointments, upcomingAppointments, loading, refetch } =
-    useAppointments();
-  const nextAppointment = upcomingAppointments[0];
-
-  // Dynamic Recent Activity state
-  const [activities, setActivities] = useState<ActivityProps[]>([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-  const [activityError, setActivityError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadActivity() {
-      setActivityLoading(true);
-      setActivityError(null);
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          if (mounted) {
-            setActivities([]);
-            setActivityLoading(false);
-          }
-          return;
-        }
-
-        const { data: appts, error: apptErr } = await supabase
-          .from("appointments")
-          .select("*")
-          .or(`attendee_user_id.eq.${user.id},provider_user_id.eq.${user.id}`)
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        if (apptErr) throw apptErr;
-
-        const mapped: ActivityProps[] = (appts || []).map((a: any) => ({
-          icon: Calendar,
-          tone: "green",
-          title: `Appointment: ${a.title}`,
-          sub: `${format(new Date(a.start_time), "EEE, MMM d, h:mm a")} • ${a.status}`,
-          date: format(new Date(a.created_at || a.start_time), "M/d/yyyy"),
-        }));
-
-        if (mounted) {
-          setActivities(mapped);
-          setActivityLoading(false);
-        }
-      } catch (err) {
-        if (mounted) {
-          setActivityError("Failed to load activity");
-          setActivityLoading(false);
-        }
-      }
-    }
-
-    loadActivity();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // Appointment history and activity removed from Overview per request.
 
   return (
     <div className="flex h-screen bg-white text-gray-900">
@@ -142,9 +81,9 @@ export default function DashboardPage() {
       {/* Sidebar (mobile overlay) */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
-          {/* Dark overlay */}
+          {/* Blur overlay */}
           <div
-            className="fixed inset-0 bg-black bg-opacity-50"
+            className="fixed inset-0 bg-black/20"
             onClick={() => setSidebarOpen(false)}
           />
           {/* Sidebar drawer */}
@@ -176,185 +115,127 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-            <StatCard
-              label="NEXT APPOINTMENT"
-              value={
-                nextAppointment
-                  ? format(new Date(nextAppointment.start_time), "EEE, MMM d")
-                  : "No upcoming"
-              }
-              sub={
-                nextAppointment
-                  ? `${format(
-                      new Date(nextAppointment.start_time),
-                      "h:mm a"
-                    )} – ${nextAppointment.title}`
-                  : "Schedule your first appointment"
-              }
-              icon={Calendar}
-              tone="blue"
-            />
-            <StatCard
-              label="OUTSTANDING BALANCE"
-              value="$299.00"
-              sub="Due 2/29/2024"
-              icon={CreditCard}
-              tone="amber"
-            />
-            <StatCard
-              label="PENDING CONTRACTS"
-              value="1"
-              sub="Awaiting signature"
-              icon={FileText}
-              tone="rose"
-            />
-            <StatCard
-              label="TOTAL APPOINTMENTS"
-              value={appointments.length}
-              sub={
-                <span className="text-green-600">
-                  {upcomingAppointments.length} upcoming
-                </span>
-              }
-              icon={TrendingUp}
-              tone="green"
-            />
-          </div>
-
-          {/* Middle grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-            {/* Upcoming Appointments */}
-            <Card className="xl:col-span-2">
+          {/* Booking CTA only */}
+          <div className="grid grid-cols-1 gap-4 mb-8">
+            <Card>
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">Upcoming Appointments</h3>
-                {/* Removed inline AppointmentScheduler from Overview */}
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {loading ? (
-                  <div className="text-center py-8 text-gray-500">
-                    Loading appointments...
-                  </div>
-                ) : upcomingAppointments.length > 0 ? (
-                  upcomingAppointments
-                    .slice(0, 3)
-                    .map((appointment) => (
-                      <AppointmentCard
-                        key={appointment.id}
-                        appointment={appointment}
-                        onUpdate={refetch}
-                      />
-                    ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Calendar className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                    <p>No upcoming appointments</p>
-                    <p className="text-sm">You have no upcoming appointments.</p>
-                  </div>
-                )}
+                <div>
+                  <h3 className="font-semibold text-lg">Book an Appointment</h3>
+                  <p className="text-sm text-gray-600">Schedule your session via our Calendly booking page.</p>
+                </div>
+                <Link href="/mgdashboard/appointments" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                  <Calendar size={16} />
+                  <span>Open Booking</span>
+                </Link>
               </div>
             </Card>
-
-            {/* Resources */}
-            {/* Resources removed as requested */}
           </div>
+
+          {/* Quick Actions */}
+          <Card className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-lg">Quick Actions</h3>
+              <span className="text-xs text-gray-500">Handy links to common tasks</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Link href="/mgdashboard/appointments" className="w-full">
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100">
+                  <span className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Calendar size={16} className="text-blue-700" />
+                  </span>
+                  <span className="text-sm font-medium text-gray-800">Book an appointment</span>
+                </div>
+              </Link>
+              <Link href="/mgdashboard/company" className="w-full">
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100">
+                  <span className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                    <Building2 size={16} className="text-amber-700" />
+                  </span>
+                  <span className="text-sm font-medium text-gray-800">Update company profile</span>
+                </div>
+              </Link>
+              <Link href="/mgdashboard/contracts" className="w-full">
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100">
+                  <span className="h-8 w-8 rounded-lg bg-rose-50 flex items-center justify-center">
+                    <FileText size={16} className="text-rose-700" />
+                  </span>
+                  <span className="text-sm font-medium text-gray-800">View contracts</span>
+                </div>
+              </Link>
+              <Link href="/mgdashboard/billing" className="w-full">
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100">
+                  <span className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center">
+                    <CreditCard size={16} className="text-green-700" />
+                  </span>
+                  <span className="text-sm font-medium text-gray-800">Billing & invoices</span>
+                </div>
+              </Link>
+              <Link href="/mgdashboard/questions" className="w-full">
+                <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100">
+                  <span className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                    <HelpCircle size={16} className="text-indigo-700" />
+                  </span>
+                  <span className="text-sm font-medium text-gray-800">Ask a question</span>
+                </div>
+              </Link>
+            </div>
+          </Card>
+
+          {/* Getting Started Checklist */}
+          <Card className="mb-8">
+            <h3 className="font-semibold text-lg mb-3">Getting Started</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="h-7 w-7 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">Complete your company profile</p>
+                  <p className="text-xs text-gray-600">Ensure your contact details and company info are up to date.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-7 w-7 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">Schedule your onboarding call</p>
+                  <p className="text-xs text-gray-600">Book time with our team to align on goals and milestones.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-7 w-7 rounded-full bg-emerald-50 flex items-center justify-center">
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">Review contracts & billing</p>
+                  <p className="text-xs text-gray-600">Access agreements and manage invoices from your dashboard.</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Help & Support */}
+          <Card>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-lg">Need help?</h3>
+                <p className="text-sm text-gray-600">Visit Support to ask a question or get assistance from our team.</p>
+              </div>
+              <Link href="/mgdashboard/questions" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                <HelpCircle size={16} />
+                <span>Go to Support</span>
+              </Link>
+            </div>
+          </Card>
+
+          {/* Appointment history and lists removed */}
 
           {/* Charts */}
           {/* Charts removed from Overview as requested */}
           {/* End Charts */}
 
-          {/* Bottom grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 pt-8">
-            {/* Recent Activity */}
-            <Card className="xl:col-span-2">
-              <h3 className="font-semibold text-lg mb-4">Recent Activity</h3>
-              {activityLoading ? (
-                <div className="text-gray-500">Loading activity...</div>
-              ) : activityError ? (
-                <div className="text-red-600">{activityError}</div>
-              ) : activities.length === 0 ? (
-                <div className="text-gray-500">No recent activity</div>
-              ) : (
-                activities.map((a, idx) => (
-                  <Activity
-                    key={idx}
-                    icon={a.icon}
-                    tone={a.tone}
-                    title={a.title}
-                    sub={a.sub}
-                    date={a.date}
-                  />
-                ))
-              )}
-            </Card>
-
-            {/* Subscription */}
-            <Card>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-lg">Subscription</h3>
-                <span className="px-3 py-1 text-xs rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
-                  Intermediate
-                </span>
-              </div>
-
-              <div className="mt-2">
-                <p className="text-sm text-gray-500 mb-1">Plan Features:</p>
-                <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckDot /> Priority consultation
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckDot /> Phone &amp; email support
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckDot /> 4 monthly sessions
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-5 flex items-center justify-between">
-                <p className="text-sm text-gray-700">Monthly Plan — $299</p>
-                <button className="inline-flex items-center gap-1 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white">
-                  Upgrade <span aria-hidden>→</span>
-                </button>
-              </div>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card>
-              <h3 className="font-semibold text-lg mb-3">Quick Actions</h3>
-              <div className="space-y-2">
-                <div className="w-full text-left">
-                  <AppointmentScheduler
-                    onAppointmentCreated={refetch}
-                    triggerButton={
-                      <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 hover:bg-gray-100 w-full">
-                        <span className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <Calendar size={16} className="text-blue-700" />
-                        </span>
-                        <span className="text-sm font-medium text-gray-800">
-                          Schedule Appointment
-                        </span>
-                      </div>
-                    }
-                  />
-                </div>
-                <QuickAction
-                  icon={CreditCard}
-                  tone="amber"
-                  text="Pay Invoice (1)"
-                />
-                <QuickAction
-                  icon={FileText}
-                  tone="rose"
-                  text="Sign Contract (1)"
-                />
-                <QuickAction icon={Plus} tone="green" text="Upgrade Service" />
-              </div>
-            </Card>
-          </div>
+          {/* Bottom section removed to eliminate activity/history */}
         </main>
       </div>
     </div>
