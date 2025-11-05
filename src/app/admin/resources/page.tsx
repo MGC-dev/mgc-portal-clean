@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listResources, type Resource } from "@/lib/resources";
-import { createClient } from "@/lib/supabase";
+import { type Resource } from "@/lib/resources";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export default function AdminResourcesPage() {
@@ -27,9 +26,10 @@ export default function AdminResourcesPage() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error } = await listResources();
-        if (error) setError(error.message);
-        setResources(data || []);
+        const res = await fetch("/api/resources", { headers: { accept: "application/json" } });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Failed to load resources");
+        setResources((json?.resources || []) as Resource[]);
       } catch (e: any) {
         setError(e?.message || "Failed to load resources");
       } finally {
