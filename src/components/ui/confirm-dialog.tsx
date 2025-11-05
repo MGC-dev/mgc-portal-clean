@@ -70,7 +70,7 @@ type ConfirmOptions = {
 
 export function useConfirm() {
   const [open, setOpen] = React.useState(false);
-  const resolverRef = React.useRef<(value: boolean) => void>();
+  const resolverRef = React.useRef<((value: boolean) => void) | null>(null);
   const [opts, setOpts] = React.useState<ConfirmOptions>({});
 
   const confirm = React.useCallback((options: ConfirmOptions = {}) => {
