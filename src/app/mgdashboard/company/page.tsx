@@ -32,16 +32,6 @@ export default function CompanyProfilePage() {
   useEffect(() => {
     async function loadProfile() {
       console.log("[v0] Starting to load profile, user:", user);
-      if (authLoading) {
-        // Wait for auth hydration before attempting to load profile
-        setLoading(true);
-        return;
-      }
-      if (!user) {
-        console.log("[v0] No user found after auth; stopping loader");
-        setLoading(false);
-        return;
-      }
 
       try {
         const timeoutMs = 15000;
@@ -53,7 +43,7 @@ export default function CompanyProfilePage() {
             ),
           ]) as Promise<T>;
         };
-        console.log("[v0] Fetching profile for user ID:", user.id);
+        console.log("[v0] Fetching profile for current session", user?.id ? `(userId=${user.id})` : "(client user not yet hydrated)");
         const res = await withTimeout(
           fetch("/api/profile", { headers: { accept: "application/json" } }),
           "Profile fetch"
@@ -141,7 +131,7 @@ export default function CompanyProfilePage() {
     return <LoadingOverlay show={true} label="Loading company profile…" variant="default" />;
   }
 
-  if (!authLoading && !user) {
+  if (!authLoading && !user && !profile.email) {
     return (
       <div className="flex min-h-screen bg-gray-50 items-center justify-center">
         <div className="text-center">

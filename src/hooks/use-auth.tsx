@@ -83,10 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getInitialSession = async () => {
       try {
         console.log("[v0] Getting initial session...");
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+        // Use timeout to avoid hanging indefinitely if desktop blocks requests
+        const get = withTimeout(supabase.auth.getSession(), 6000);
+        const result = await get;
+        const session = result?.data?.session ?? null;
+        const sessionError = (result as any)?.error ?? null;
 
         if (sessionError) {
           console.error("[v0] Session error:", sessionError);
