@@ -47,6 +47,7 @@ export default function AppointmentsPage() {
             mode="inline"
             inlineHeight={700}
             className="w-full mt-6"
+            url="https://calendly.com/mgconsultingfirm/onboarding-call"
             prefill={{
               email: user?.email ?? undefined,
               name: profile?.full_name ?? undefined,
