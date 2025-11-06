@@ -54,8 +54,11 @@ export default function CompanyProfilePage() {
           ]) as Promise<T>;
         };
         console.log("[v0] Fetching profile for user ID:", user.id);
-        const res = await fetch("/api/profile", { headers: { accept: "application/json" } });
-        const json = await res.json().catch(() => ({}));
+        const res = await withTimeout(
+          fetch("/api/profile", { headers: { accept: "application/json" } }),
+          "Profile fetch"
+        );
+        const json = await withTimeout(res.json(), "Profile JSON").catch(() => ({} as any));
         console.log("[v0] Profile API result:", { status: res.status, json });
         if (!res.ok) {
           const msg = json?.error || "Failed to load profile";
@@ -81,6 +84,17 @@ export default function CompanyProfilePage() {
 
     loadProfile();
   }, [user, authLoading]);
+
+  // Fallback guard: if auth hydration stalls, surface an error and stop spinner
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (authLoading && loading) {
+        setBanner({ variant: "error", message: "Authentication is taking longer than expected. Please refresh or try again." });
+        setLoading(false);
+      }
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [authLoading, loading]);
 
   const handleSave = async () => {
     console.log("[v0] Starting to save profile...");

@@ -1,27 +1,41 @@
 import { NextResponse } from "next/server";
-import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase-server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export async function GET() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const admin = createAdminSupabaseClient();
   try {
-    const { data, error } = await admin
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile, error } = await supabase
       .from("profiles")
-      .select("full_name, company_name, phone, email")
+      .select("id,email,full_name,company_name,phone,created_at,updated_at")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ profile: data || null });
+
+    // Provide a minimal fallback if no profile row exists yet
+    if (!profile) {
+      return NextResponse.json({
+        profile: {
+          full_name: "",
+          company_name: "",
+          phone: "",
+          email: user.email,
+        },
+      });
+    }
+
+    return NextResponse.json({ profile });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Failed to fetch profile" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
   }
 }
