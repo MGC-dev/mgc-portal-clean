@@ -12,18 +12,22 @@ export async function POST(req: Request) {
     }
 
     const { user } = await getUserAndProfile();
-    const form = await req.formData();
+  const form = await req.formData();
 
-    const title = (form.get("title") as string) || "";
-    const description = (form.get("description") as string) || null;
-    const category = (form.get("category") as string) || "document";
-    const accessLevel = (form.get("access_level") as string) || "basic";
-    const externalUrl = (form.get("external_url") as string) || null;
-    const file = form.get("file") as File | null;
+  const title = (form.get("title") as string) || "";
+  const description = (form.get("description") as string) || null;
+  const category = (form.get("category") as string) || "document";
+  const accessLevel = (form.get("access_level") as string) || "basic";
+  const externalUrl = (form.get("external_url") as string) || null;
+  const file = form.get("file") as File | null;
+  const clientUserId = (form.get("client_user_id") as string) || "";
 
-    if (!title) {
-      return NextResponse.json({ error: "Title is required" }, { status: 400 });
-    }
+  if (!title) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+  if (!clientUserId) {
+    return NextResponse.json({ error: "client_user_id is required" }, { status: 400 });
+  }
 
     const adminClient = createAdminSupabaseClient();
     const bucket = process.env.SUPABASE_RESOURCES_BUCKET || "resources";
@@ -77,6 +81,7 @@ export async function POST(req: Request) {
       file_url: fileUrl,
       access_level: accessLevel,
       created_by: user?.id || null,
+      client_user_id: clientUserId,
     };
 
     const { data, error } = await adminClient

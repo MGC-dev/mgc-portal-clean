@@ -117,7 +117,7 @@ export async function POST(request: Request) {
               </div>
               
               <div style="text-align: center; margin: 25px 0;">
-                <a href="https://calendly.com/mgconsultingfirm/onboarding-call" style="display: inline-block; background-color: #3498db; color: white; text-decoration: none; padding: 15px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">📅 Schedule Your Onboarding</a>
+                <a href="https://calendly.com/mgconsultingfirm/15min" style="display: inline-block; background-color: #3498db; color: white; text-decoration: none; padding: 15px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">📅 Schedule Your Onboarding</a>
               </div>
               
               <h3 style="color: #2c3e50; font-size: 18px; margin: 20px 0 10px 0;">What We'll Cover:</h3>

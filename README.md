@@ -37,6 +37,7 @@ Set the following in `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+SUPABASE_CLIENT_DOCS_BUCKET=client-documents
 ```
 
 ### Database Migration
@@ -51,6 +52,7 @@ Key tables included:
 - `support_tickets`, `messages`
 - `subscription_tiers`, `user_subscriptions`, `service_components`, `service_component_access`
 - `contracts`, `session_recaps`, `resources`
+- `client_documents` (client-submitted docs; stored in `client-documents` bucket)
 
 ### Admin Access
 

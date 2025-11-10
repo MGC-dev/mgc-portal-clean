@@ -56,6 +56,13 @@ export default async function AdminPage() {
                 <span className="text-blue-600 group-hover:translate-x-1 transition-transform">→</span>
               </Link>
               <Link 
+                href="/admin/client-documents" 
+                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
+              >
+                <span className="text-gray-900 font-medium">Client Documents</span>
+                <span className="text-blue-600 group-hover:translate-x-1 transition-transform">→</span>
+              </Link>
+              <Link 
                 href="/admin/support" 
                 className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
               >

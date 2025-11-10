@@ -39,15 +39,15 @@ export default function AppointmentsPage() {
 
         {/* Main Content cleared */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <h2 className="text-xl sm:text-2xl font-bold">Appointments</h2>
-          <p className="text-gray-600 mt-2">Schedule and book appointments via Calendly.</p>
+          {/* Title removed per request */}
+          <p className="text-gray-600">Schedule and book appointments via Calendly.</p>
 
           {/* Use env-based Calendly URL so it aligns with the API token account */}
           <CalendlyWidget
             mode="inline"
             inlineHeight={700}
             className="w-full mt-6"
-            url="https://calendly.com/mgconsultingfirm/onboarding-call"
+            url="https://calendly.com/mgconsultingfirm/onboarding-call?hide_event_type_details=1&hide_gdpr_banner=1"
             prefill={{
               email: user?.email ?? undefined,
               name: profile?.full_name ?? undefined,

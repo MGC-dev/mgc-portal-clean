@@ -20,6 +20,25 @@ export default function AdminResourcesPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [clientUserId, setClientUserId] = useState<string>("");
+  const [clients, setClients] = useState<{ id: string; label: string }[]>([]);
+
+  function formatDateTime(value?: string | null) {
+    if (!value) return "";
+    try {
+      const d = new Date(value);
+      return d.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return String(value);
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -30,6 +49,19 @@ export default function AdminResourcesPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || "Failed to load resources");
         setResources((json?.resources || []) as Resource[]);
+        // Load clients for assignment selector
+        const usersRes = await fetch("/api/admin/users?perPage=200", { headers: { accept: "application/json" } });
+        const usersJson = await usersRes.json();
+        if (usersRes.ok && Array.isArray(usersJson?.users)) {
+          const clientOptions = (usersJson.users as any[])
+            .filter((u: any) => (u?.profile?.role || "") === "client")
+            .map((u: any) => ({
+              id: u.id,
+              label: u?.profile?.full_name || u?.email || u.id,
+            }))
+            .sort((a: any, b: any) => String(a.label).localeCompare(String(b.label)));
+          setClients(clientOptions);
+        }
       } catch (e: any) {
         setError(e?.message || "Failed to load resources");
       } finally {
@@ -46,6 +78,7 @@ export default function AdminResourcesPage() {
     try {
       if (!title) throw new Error("Title is required");
       if (!file && !externalUrl) throw new Error("Provide a file or external URL");
+      if (!clientUserId) throw new Error("Assign to a client");
       setPhase(file ? "uploading" : "saving");
       const formData = new FormData();
       formData.append("title", title);
@@ -54,6 +87,7 @@ export default function AdminResourcesPage() {
       formData.append("access_level", accessLevel);
       if (file) formData.append("file", file);
       if (externalUrl) formData.append("external_url", externalUrl);
+      formData.append("client_user_id", clientUserId);
 
       const res = await fetch("/api/admin/resources/upload", {
         method: "POST",
@@ -71,6 +105,7 @@ export default function AdminResourcesPage() {
         setAccessLevel("basic");
         setFile(null);
         setExternalUrl("");
+        setClientUserId("");
       }
     } catch (err: any) {
       console.error("Upload error", err);
@@ -125,6 +160,16 @@ export default function AdminResourcesPage() {
                 <option value="video">Video</option>
               </select>
             </div>
+            <div className="col-span-1">
+              <label className="block text-sm font-medium">Assign to Client</label>
+              <select value={clientUserId} onChange={(e) => setClientUserId(e.target.value)} className="mt-1 w-full border rounded-md p-2">
+                <option value="">Select a client…</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Required. Resource will be visible only to the selected client.</p>
+            </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium">Description</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full border rounded-md p-2" rows={3} />
@@ -168,6 +213,12 @@ export default function AdminResourcesPage() {
                   <div>
                     <div className="font-medium">{r.title}</div>
                     <div className="text-xs text-gray-600">{r.category || "uncategorized"} • {r.access_level}</div>
+                    {r.client_user_id && (
+                      <div className="text-xs text-gray-500">Client: {clients.find((c) => c.id === (r as any).client_user_id)?.label || (r as any).client_user_id}</div>
+                    )}
+                    {r.created_at && (
+                      <div className="text-xs text-gray-500">Uploaded: {formatDateTime(r.created_at)}</div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     {r.file_url && (

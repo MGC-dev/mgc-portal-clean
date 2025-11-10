@@ -14,6 +14,7 @@ import {
   HelpCircle,
   Puzzle,
   Building2,
+  Upload,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -30,7 +31,7 @@ const menuItems = [
     icon: BookText,
   },
   {
-    name: "My Appointments",
+    name: "Appointments",
     href: "/mgdashboard/appointments",
     icon: Calendar,
   },
@@ -43,6 +44,11 @@ const menuItems = [
     name: "Contracts & Agreements",
     href: "/mgdashboard/contracts",
     icon: FileText,
+  },
+  {
+    name: "My Documents",
+    href: "/mgdashboard/documents",
+    icon: Upload,
   },
   {
     name: "Support",

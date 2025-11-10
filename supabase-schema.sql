@@ -350,9 +350,13 @@ create table if not exists public.resources (
   created_at timestamptz default now()
 );
 create index if not exists idx_resources_category on public.resources(category);
+-- Add per-client assignment and index
+alter table public.resources add column if not exists client_user_id uuid references public.profiles(id) on delete cascade;
+create index if not exists idx_resources_client on public.resources(client_user_id);
 alter table public.resources enable row level security;
-drop policy if exists resources_select_all on public.resources;
-create policy resources_select_all on public.resources for select using (true);
+-- Restrict selection to owner (client) by default
+drop policy if exists resources_owner_select on public.resources;
+create policy resources_owner_select on public.resources for select using (client_user_id = auth.uid());
 drop policy if exists resources_admin_manage on public.resources;
 create policy resources_admin_manage on public.resources for all
   using (
@@ -503,3 +507,96 @@ on conflict (id) do nothing;
 insert into storage.buckets (id, name, public)
 values ('contracts-signed', 'contracts-signed', false)
 on conflict (id) do nothing;
+
+-- =====================
+-- Client-submitted Documents: table and storage
+-- =====================
+
+-- Private bucket for client-submitted documents
+insert into storage.buckets (id, name, public)
+values ('client-documents', 'client-documents', false)
+on conflict (id) do nothing;
+
+-- Table to track client document submissions
+create table if not exists public.client_documents (
+  id uuid primary key default gen_random_uuid(),
+  client_user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  description text,
+  file_path text not null,
+  status text default 'submitted' check (status in ('submitted','reviewed','approved','rejected')),
+  created_at timestamptz default now()
+);
+create index if not exists idx_client_documents_client on public.client_documents(client_user_id);
+alter table public.client_documents enable row level security;
+
+-- RLS: clients manage their own rows
+drop policy if exists client_documents_owner_select on public.client_documents;
+create policy client_documents_owner_select on public.client_documents for select using (client_user_id = auth.uid());
+
+drop policy if exists client_documents_owner_insert on public.client_documents;
+create policy client_documents_owner_insert on public.client_documents for insert with check (client_user_id = auth.uid());
+
+drop policy if exists client_documents_owner_update on public.client_documents;
+create policy client_documents_owner_update on public.client_documents for update using (client_user_id = auth.uid()) with check (client_user_id = auth.uid());
+
+drop policy if exists client_documents_owner_delete on public.client_documents;
+create policy client_documents_owner_delete on public.client_documents for delete using (client_user_id = auth.uid());
+
+-- RLS: admins manage all rows
+drop policy if exists client_documents_admin_manage on public.client_documents;
+create policy client_documents_admin_manage on public.client_documents for all
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role in ('admin','super_admin')
+    )
+    or exists (
+      select 1 from public.role_assignments ra
+      where ra.user_id = auth.uid() and ra.role in ('admin','super_admin')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role in ('admin','super_admin')
+    )
+    or exists (
+      select 1 from public.role_assignments ra
+      where ra.user_id = auth.uid() and ra.role in ('admin','super_admin')
+    )
+  );
+
+-- Storage policies for client-documents bucket
+drop policy if exists client_documents_authenticated_upload on storage.objects;
+create policy client_documents_authenticated_upload on storage.objects for insert to authenticated
+  with check (bucket_id = 'client-documents' and auth.uid() is not null);
+
+drop policy if exists client_documents_owner_update on storage.objects;
+create policy client_documents_owner_update on storage.objects for update to authenticated
+  using (bucket_id = 'client-documents' and owner = auth.uid())
+  with check (bucket_id = 'client-documents' and owner = auth.uid());
+
+drop policy if exists client_documents_owner_delete on storage.objects;
+create policy client_documents_owner_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'client-documents' and owner = auth.uid());
+
+-- Optional: allow admins to manage any object in 'client-documents' bucket
+drop policy if exists client_documents_admin_manage_storage on storage.objects;
+create policy client_documents_admin_manage_storage on storage.objects for all to authenticated
+  using (
+    bucket_id = 'client-documents' and (
+      exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('admin','super_admin'))
+      or exists (select 1 from public.role_assignments ra where ra.user_id = auth.uid() and ra.role in ('admin','super_admin'))
+    )
+  )
+  with check (
+    bucket_id = 'client-documents' and (
+      exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('admin','super_admin'))
+      or exists (select 1 from public.role_assignments ra where ra.user_id = auth.uid() and ra.role in ('admin','super_admin'))
+    )
+  );
+
+-- Grants for client_documents
+grant select, insert, update, delete on table public.client_documents to authenticated;
+grant all privileges on table public.client_documents to service_role;

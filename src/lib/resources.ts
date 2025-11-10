@@ -9,6 +9,7 @@ export type Resource = {
   access_level?: "basic" | "intermediate" | "advanced";
   created_by?: string;
   created_at?: string;
+  client_user_id?: string;
 };
 
 export type CreateResourceInput = {
