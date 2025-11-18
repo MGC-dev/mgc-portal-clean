@@ -8,7 +8,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "MG Client Portal",
-  description: "Comprehensive business management platform",
+  description: "Coaching and operational support to grow your law firm with clarity and structure",
 };
 
 export default function RootLayout({
