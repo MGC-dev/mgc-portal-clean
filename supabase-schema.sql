@@ -461,15 +461,13 @@ grant all privileges on table public.resources to service_role;
 -- Storage bucket and policies for resources uploads
 -- =====================
 
--- Ensure the 'resources' storage bucket exists and is public
+-- Ensure the 'resources' storage bucket exists and is private
 insert into storage.buckets (id, name, public)
-values ('resources', 'resources', true)
+values ('resources', 'resources', false)
 on conflict (id) do nothing;
 
 -- Storage RLS policies to allow public read and authenticated uploads
-drop policy if exists resources_public_read on storage.objects;
-create policy resources_public_read on storage.objects for select
-  using (bucket_id = 'resources');
+-- Remove public read; access via signed URLs or owner policies
 
 drop policy if exists resources_authenticated_upload on storage.objects;
 create policy resources_authenticated_upload on storage.objects for insert to authenticated

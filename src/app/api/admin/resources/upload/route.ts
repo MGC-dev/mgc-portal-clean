@@ -17,7 +17,6 @@ export async function POST(req: Request) {
   const title = (form.get("title") as string) || "";
   const description = (form.get("description") as string) || null;
   const category = (form.get("category") as string) || "document";
-  const accessLevel = (form.get("access_level") as string) || "basic";
   const externalUrl = (form.get("external_url") as string) || null;
   const file = form.get("file") as File | null;
   const clientUserId = (form.get("client_user_id") as string) || "";
@@ -79,7 +78,6 @@ export async function POST(req: Request) {
       description,
       category,
       file_url: fileUrl,
-      access_level: accessLevel,
       created_by: user?.id || null,
       client_user_id: clientUserId,
     };
@@ -90,17 +88,7 @@ export async function POST(req: Request) {
       .select("*")
       .single();
 
-    if (error && /client_user_id/i.test(error.message)) {
-      const altPayload = { ...payload } as any;
-      delete altPayload.client_user_id;
-      const alt = await adminClient
-        .from("resources")
-        .insert(altPayload)
-        .select("*")
-        .single();
-      data = alt.data as any;
-      error = alt.error as any;
-    }
+    // Do not fallback to inserting without client_user_id; require assignment
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

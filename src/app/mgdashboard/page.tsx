@@ -68,7 +68,7 @@ interface ActivityProps {
 export default function DashboardPage() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   // Appointment history and activity removed from Overview per request.
 
   return (
@@ -108,7 +108,7 @@ export default function DashboardPage() {
           {/* Greeting */}
           <div className="mb-6">
             <h1 className="text-4xl font-extrabold tracking-tight">
-              Welcome back, {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}
+              Welcome back, {profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User"}
             </h1>
             <p className="text-gray-600 mt-1">
               Here&apos;s what&apos;s happening with your account today.

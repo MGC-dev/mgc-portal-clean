@@ -83,9 +83,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getInitialSession = async () => {
       try {
         console.log("[v0] Getting initial session...");
-        // Use timeout to avoid hanging indefinitely if desktop blocks requests
-        const get = withTimeout(supabase.auth.getSession(), 6000);
-        const result = await get;
+        const timed = withTimeout(supabase.auth.getSession(), 6000);
+        const result = await timed;
+        if (result === null) {
+          setLoading(false);
+          return;
+        }
         const session = result?.data?.session ?? null;
         const sessionError = (result as any)?.error ?? null;
 
@@ -94,7 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         console.log("[v0] Session:", session ? "Found" : "None");
-        setUser(session?.user ?? null);
+        if (session?.user) {
+          setUser(session.user);
+        }
 
         if (session?.user) {
           console.log("[v0] Fetching profile for user:", session.user.id);
@@ -115,16 +120,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[v0] Auth state changed:", event);
-      setUser(session?.user ?? null);
-
       if (session?.user) {
+        setUser(session.user);
         const profileData = await fetchProfile(session.user.id);
         setProfile(profileData);
-      } else {
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
         setProfile(null);
       }
 

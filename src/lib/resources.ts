@@ -6,7 +6,6 @@ export type Resource = {
   description?: string;
   category?: string; // e.g., 'document' | 'video'
   file_url?: string;
-  access_level?: "basic" | "intermediate" | "advanced";
   created_by?: string;
   created_at?: string;
   client_user_id?: string;
@@ -16,7 +15,6 @@ export type CreateResourceInput = {
   title: string;
   description?: string;
   category?: string;
-  access_level?: "basic" | "intermediate" | "advanced";
   file?: File | null;
   external_url?: string | null;
 };
@@ -87,7 +85,6 @@ export async function createResource(input: CreateResourceInput) {
     description: input.description || null,
     category: input.category || null,
     file_url: fileUrl || null,
-    access_level: input.access_level || "basic",
     created_by: userId !== "unknown" ? userId : null,
   };
 

@@ -9,7 +9,6 @@ export default function AdminResourcesPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<"document" | "video">("document");
-  const [accessLevel, setAccessLevel] = useState<"basic" | "intermediate" | "advanced">("basic");
   const [file, setFile] = useState<File | null>(null);
   const [externalUrl, setExternalUrl] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -84,7 +83,6 @@ export default function AdminResourcesPage() {
       formData.append("title", title);
       if (description) formData.append("description", description);
       formData.append("category", category);
-      formData.append("access_level", accessLevel);
       if (file) formData.append("file", file);
       if (externalUrl) formData.append("external_url", externalUrl);
       formData.append("client_user_id", clientUserId);
@@ -102,7 +100,6 @@ export default function AdminResourcesPage() {
         setTitle("");
         setDescription("");
         setCategory("document");
-        setAccessLevel("basic");
         setFile(null);
         setExternalUrl("");
         setClientUserId("");
@@ -175,14 +172,6 @@ export default function AdminResourcesPage() {
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full border rounded-md p-2" rows={3} />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-sm font-medium">Access Level</label>
-              <select value={accessLevel} onChange={(e) => setAccessLevel(e.target.value as any)} className="mt-1 w-full border rounded-md p-2">
-                <option value="basic">Basic</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </div>
-            <div className="md:col-span-1">
               <label className="block text-sm font-medium">File Upload</label>
               <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="mt-1 w-full" />
               <p className="text-xs text-gray-500 mt-1">PDF, DOCX, XLSX, or MP4 supported.</p>
@@ -212,7 +201,7 @@ export default function AdminResourcesPage() {
                 <li key={r.id} className="flex items-center justify-between border rounded-md p-3">
                   <div>
                     <div className="font-medium">{r.title}</div>
-                    <div className="text-xs text-gray-600">{r.category || "uncategorized"} • {r.access_level}</div>
+                    <div className="text-xs text-gray-600">{r.category || "uncategorized"}</div>
                     {r.client_user_id && (
                       <div className="text-xs text-gray-500">Client: {clients.find((c) => c.id === (r as any).client_user_id)?.label || (r as any).client_user_id}</div>
                     )}
