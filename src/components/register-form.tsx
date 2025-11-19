@@ -486,14 +486,7 @@ export function RegisterForm() {
         <Label htmlFor="terms" className="text-sm text-white">
           I agree to the{" "}
           <Link
-            href="/terms"
-            className="text-blue-200 hover:text-white underline"
-          >
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="/privacy"
+            href="https://mgconsultingfirm.com/privacy-policy/"
             className="text-blue-200 hover:text-white underline"
           >
             Privacy Policy

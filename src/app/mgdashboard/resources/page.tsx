@@ -216,7 +216,7 @@ export default function ResourceLibraryPage() {
     </div>
 
     {/* For Mobile (fullscreen) */}
-      <div className="sm:hidden fixed inset-0 bg-white text-black z-50 flex flex-col">
+      <div className="sm:hidden w-full h-full bg-white text-black z-50 flex flex-col">
         <div className="flex justify-between items-center p-4 border-b border-gray-200">
           <h1 className="text-sm font-bold truncate">{selectedDoc.title}</h1>
           <button

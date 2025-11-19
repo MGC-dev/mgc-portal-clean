@@ -192,8 +192,7 @@ export default function ForgotResetPasswordPage() {
         {/* Footer Links */}
         <div className="text-center space-y-2">
           <div className="flex justify-center space-x-4 text-xs text-white/80 drop-shadow-sm">
-            <Link href="/privacy" className="hover:text-white underline underline-offset-2">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-white underline underline-offset-2">Terms of Service</Link>
+            <Link href="https://mgconsultingfirm.com/privacy-policy/" className="hover:text-white underline underline-offset-2">Privacy Policy</Link>
           </div>
         </div>
       </div>

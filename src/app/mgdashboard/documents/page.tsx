@@ -72,7 +72,6 @@ export default function ClientDocumentsPage() {
       setTitle("");
       setDescription("");
       setFile(null);
-      // Reload documents
       const listRes = await fetch("/api/client/documents", { headers: { accept: "application/json" } });
       if (listRes.ok) {
         const listJson = await listRes.json();
@@ -94,9 +93,7 @@ export default function ClientDocumentsPage() {
       if (url) {
         window.open(url, "_blank");
       }
-    } catch (e) {
-      // no-op, could add a toast
-    }
+    } catch (e) {}
   }
 
   async function deleteDoc(id: string) {
@@ -211,7 +208,6 @@ export default function ClientDocumentsPage() {
                   <li key={d.id} className="flex items-center justify-between border rounded-md p-3">
                     <div>
                       <div className="font-medium">{d.title}</div>
-                      <div className="text-xs text-gray-600">{d.status || "submitted"}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <button onClick={() => openDoc(d.id)} className="text-blue-600 hover:underline">Open</button>
@@ -227,7 +223,6 @@ export default function ClientDocumentsPage() {
                 ))}
               </ul>
             )}
-            {/* Confirmation Dialog */}
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
               <DialogContent>
                 <DialogHeader>

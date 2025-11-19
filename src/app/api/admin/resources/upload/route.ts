@@ -84,11 +84,23 @@ export async function POST(req: Request) {
       client_user_id: clientUserId,
     };
 
-    const { data, error } = await adminClient
+    let { data, error } = await adminClient
       .from("resources")
       .insert(payload)
       .select("*")
       .single();
+
+    if (error && /client_user_id/i.test(error.message)) {
+      const altPayload = { ...payload } as any;
+      delete altPayload.client_user_id;
+      const alt = await adminClient
+        .from("resources")
+        .insert(altPayload)
+        .select("*")
+        .single();
+      data = alt.data as any;
+      error = alt.error as any;
+    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

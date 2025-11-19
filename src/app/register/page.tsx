@@ -69,16 +69,10 @@ export default function RegisterPage() {
           </p>
           <div className="flex justify-center space-x-4 text-xs text-white/80 drop-shadow-sm">
             <Link
-              href="/privacy"
+              href="https://mgconsultingfirm.com/privacy-policy/"
               className="hover:text-white underline underline-offset-2"
             >
               Privacy Policy
-            </Link>
-            <Link
-              href="/terms"
-              className="hover:text-white underline underline-offset-2"
-            >
-              Terms of Service
             </Link>
           </div>
         </div>

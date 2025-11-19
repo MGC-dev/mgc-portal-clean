@@ -3,25 +3,11 @@
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { useState } from "react";
-import { Download, CreditCard } from "lucide-react";
+import { } from "lucide-react";
 
 export default function BillingPage() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-
-  const invoices = [
-    {
-      id: "INV-2024-001",
-      due: "2024-01-31T23:59:59Z",
-      amount: "$299",
-      status: "paid",
-    },
-    {
-      id: "INV-2024-002",
-      due: "2024-02-28T23:59:59Z",
-      amount: "$299",
-      status: "sent",
-    },
-  ];
+ 
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -54,64 +40,11 @@ export default function BillingPage() {
 
         {/* Main Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          {/* Header row */}
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+          <div className="flex flex-col gap-3 mb-6">
             <h2 className="text-xl sm:text-2xl font-bold">Billing & Invoices</h2>
-            <button className="flex items-center gap-2 bg-blue-800 hover:bg-blue-900 text-white px-4 py-2 rounded-lg text-sm sm:text-base">
-              <CreditCard size={18} /> Update Payment Method
-            </button>
           </div>
-
-          {/* Outer Section Card */}
-          <div className="bg-gray-100 rounded-xl p-4 sm:p-6 shadow-sm">
-            <h3 className="text-md sm:text-lg font-semibold mb-3 sm:mb-4">
-              Recent Invoices
-            </h3>
-
-            <div className="space-y-4">
-              {invoices.map((inv) => (
-                <div
-                  key={inv.id}
-                  className="bg-white rounded-xl shadow-sm border p-4 sm:p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4"
-                >
-                  {/* Invoice details */}
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                      <h4 className="font-semibold text-base sm:text-lg">
-                        Invoice #{inv.id}
-                      </h4>
-                      <span
-                        className={`px-2 sm:px-3 py-0.5 text-xs rounded-full font-medium ${
-                          inv.status === "paid"
-                            ? "bg-blue-300 text-blue-800"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        {inv.status}
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-gray-600">
-                      Due:{" "}
-                      {new Date(inv.due).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-
-                  {/* Invoice amount + actions */}
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <span className="font-semibold text-base sm:text-lg">
-                      {inv.amount}
-                    </span>
-                    <button className="flex items-center gap-2 border px-3 sm:px-4 py-2 rounded-lg text-sm hover:bg-gray-100">
-                      <Download size={16} /> Download
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="bg-white rounded-xl border p-6 shadow-sm">
+            <p className="text-gray-700">No invoices at the moment</p>
           </div>
         </main>
       </div>
