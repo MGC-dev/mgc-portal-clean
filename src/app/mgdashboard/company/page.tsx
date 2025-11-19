@@ -87,41 +87,40 @@ export default function CompanyProfilePage() {
   }, [authLoading, loading]);
 
   const handleSave = async () => {
-    console.log("[v0] Starting to save profile...");
-    if (!user) {
-      console.log("[v0] No user found, cannot save");
-      return;
-    }
-
+    if (!user) return;
     setSaving(true);
     try {
-      console.log(
-        "[v0] Updating profile for user:",
-        user.id,
-        "with data:",
-        profile
+      const timeoutMs = 15000;
+      const withTimeout = <T,>(p: PromiseLike<T>, label: string): Promise<T> => {
+        return Promise.race([
+          p,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+          ),
+        ]) as Promise<T>;
+      };
+      const res = await withTimeout(
+        fetch("/api/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", accept: "application/json" },
+          body: JSON.stringify({
+            full_name: profile.full_name,
+            company_name: profile.company_name,
+            phone: profile.phone,
+          }),
+        }),
+        "Profile save"
       );
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: profile.full_name,
-          company_name: profile.company_name,
-          phone: profile.phone,
-        })
-        .eq("id", user.id);
-
-      console.log("[v0] Profile update result:", { error });
-
-      if (error) {
-        console.error("[v0] Error saving profile:", error);
-        setBanner({ variant: "error", message: "Error saving profile. Please try again." });
+      const json = await withTimeout(res.json(), "Profile save JSON").catch(() => ({} as any));
+      if (!res.ok) {
+        const msg = json?.error || "Error saving profile. Please try again.";
+        setBanner({ variant: "error", message: msg });
       } else {
-        console.log("[v0] Profile saved successfully!");
         setBanner({ variant: "success", message: "Profile saved successfully!" });
       }
-    } catch (error) {
-      console.error("[v0] Exception saving profile:", error);
-      setBanner({ variant: "error", message: "Error saving profile. Please try again." });
+    } catch (error: any) {
+      const msg = error?.message || "Error saving profile. Please try again.";
+      setBanner({ variant: "error", message: msg });
     } finally {
       setSaving(false);
     }

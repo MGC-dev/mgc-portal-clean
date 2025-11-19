@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
-    const supportTo = process.env.SUPPORT_TO_EMAIL || process.env.NEXT_PUBLIC_SUPPORT_EMAIL || fromEmail;
+    const supportTo = "mgcentralsupport@mgconsultingfirm.com";
 
     if (!apiKey || !fromEmail) {
       return NextResponse.json({ error: "Resend not configured" }, { status: 501 });

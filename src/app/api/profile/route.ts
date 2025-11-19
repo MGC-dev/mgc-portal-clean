@@ -39,3 +39,39 @@ export async function GET() {
     return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let payload: any;
+    try {
+      payload = await request.json();
+    } catch (_) {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    const full_name = String(payload?.full_name ?? "");
+    const company_name = String(payload?.company_name ?? "");
+    const phone = String(payload?.phone ?? "");
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name, company_name, phone })
+      .eq("id", user.id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Server error" }, { status: 500 });
+  }
+}
