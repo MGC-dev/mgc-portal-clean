@@ -46,7 +46,7 @@ const menuItems = [
     icon: FileText,
   },
   {
-    name: "My Documents",
+    name: "My Resources",
     href: "/mgdashboard/documents",
     icon: Upload,
   },
