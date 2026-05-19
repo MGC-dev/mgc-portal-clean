@@ -2,101 +2,74 @@
 import { NextResponse } from "next/server";
 
 // Cache tokens to avoid hitting rate limits
-let biginTokenCache: { accessToken: string; expiresAt: number } | null = null;
-let workDriveTokenCache: { accessToken: string; expiresAt: number } | null = null;
+let zohoTokenCache: { accessToken: string; expiresAt: number } | null = null;
+let tokenFetchPromise: Promise<string> | null = null;
 
 const ZOHO_REGION = process.env.ZOHO_REGION || "com";
 const ZOHO_AUTH_BASE = `https://accounts.zoho.${ZOHO_REGION}`;
 
-// Bigin API endpoint
-const ZOHO_BIGIN_BASE = `https://www.zohoapis.${ZOHO_REGION}/bigin/v2`;
+// CRM API endpoint
+const ZOHO_CRM_BASE = `https://www.zohoapis.${ZOHO_REGION}/crm/v3`;
 // WorkDrive API endpoint
 const ZOHO_WORKDRIVE_BASE = `https://workdrive.zoho.${ZOHO_REGION}/api/v1`;
 
-export async function getBiginAccessToken(): Promise<string> {
-  if (biginTokenCache && Date.now() < biginTokenCache.expiresAt - 10000) {
-    return biginTokenCache.accessToken;
+export async function getZohoAccessToken(): Promise<string> {
+  if (zohoTokenCache && Date.now() < zohoTokenCache.expiresAt - 10000) {
+    return zohoTokenCache.accessToken;
   }
 
-  const clientId = process.env.ZOHO_BIGIN_CLIENT_ID || process.env.ZOHO_CLIENT_ID;
-  const clientSecret = process.env.ZOHO_BIGIN_CLIENT_SECRET || process.env.ZOHO_CLIENT_SECRET;
-  const refreshToken = process.env.ZOHO_BIGIN_REFRESH_TOKEN || process.env.ZOHO_REFRESH_TOKEN;
-
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("Zoho Bigin OAuth configuration missing.");
+  if (tokenFetchPromise) {
+    return tokenFetchPromise;
   }
 
-  const url = `${ZOHO_AUTH_BASE}/oauth/v2/token`;
-  const params = new URLSearchParams({
-    refresh_token: refreshToken,
-    client_id: clientId,
-    client_secret: clientSecret,
-    grant_type: "refresh_token",
-  });
+  tokenFetchPromise = (async () => {
+    try {
+      const clientId = process.env.ZOHO_CRM_CLIENT_ID || process.env.ZOHO_CLIENT_ID || process.env.ZOHO_BIGIN_CLIENT_ID;
+      const clientSecret = process.env.ZOHO_CRM_CLIENT_SECRET || process.env.ZOHO_CLIENT_SECRET || process.env.ZOHO_BIGIN_CLIENT_SECRET;
+      const refreshToken = process.env.ZOHO_WORKDRIVE_REFRESH_TOKEN || process.env.ZOHO_CRM_REFRESH_TOKEN || process.env.ZOHO_REFRESH_TOKEN;
 
-  const res = await fetch(`${url}?${params.toString()}`, {
-    method: "POST",
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
+      if (!clientId || !clientSecret || !refreshToken) {
+        throw new Error("Zoho OAuth configuration missing.");
+      }
 
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Zoho Bigin token request failed: ${res.status} - ${text}`);
+      const url = `${ZOHO_AUTH_BASE}/oauth/v2/token`;
+      const params = new URLSearchParams({
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "refresh_token",
+      });
 
-  const data = JSON.parse(text);
-  if (!data.access_token) throw new Error(`Invalid response: missing access_token`);
+      const res = await fetch(`${url}?${params.toString()}`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
 
-  const accessToken = data.access_token as string;
-  const expiresIn = (data.expires_in as number | undefined) ?? 3600;
+      const text = await res.text();
+      if (!res.ok) throw new Error(`Zoho token request failed: ${res.status} - ${text}`);
 
-  biginTokenCache = { accessToken, expiresAt: Date.now() + expiresIn * 1000 };
-  return accessToken;
-}
+      const data = JSON.parse(text);
+      if (!data.access_token) throw new Error(`Invalid response: missing access_token`);
 
-export async function getWorkDriveAccessToken(): Promise<string> {
-  if (workDriveTokenCache && Date.now() < workDriveTokenCache.expiresAt - 10000) {
-    return workDriveTokenCache.accessToken;
-  }
+      const accessToken = data.access_token as string;
+      const expiresIn = (data.expires_in as number | undefined) ?? 3600;
 
-  const clientId = process.env.ZOHO_WORKDRIVE_CLIENT_ID || process.env.ZOHO_CLIENT_ID;
-  const clientSecret = process.env.ZOHO_WORKDRIVE_CLIENT_SECRET || process.env.ZOHO_CLIENT_SECRET;
-  const refreshToken = process.env.ZOHO_WORKDRIVE_REFRESH_TOKEN || process.env.ZOHO_REFRESH_TOKEN;
+      zohoTokenCache = { accessToken, expiresAt: Date.now() + expiresIn * 1000 };
+      return accessToken;
+    } finally {
+      tokenFetchPromise = null;
+    }
+  })();
 
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("Zoho WorkDrive OAuth configuration missing.");
-  }
-
-  const url = `${ZOHO_AUTH_BASE}/oauth/v2/token`;
-  const params = new URLSearchParams({
-    refresh_token: refreshToken,
-    client_id: clientId,
-    client_secret: clientSecret,
-    grant_type: "refresh_token",
-  });
-
-  const res = await fetch(`${url}?${params.toString()}`, {
-    method: "POST",
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Zoho WorkDrive token request failed: ${res.status} - ${text}`);
-
-  const data = JSON.parse(text);
-  if (!data.access_token) throw new Error(`Invalid response: missing access_token`);
-
-  const accessToken = data.access_token as string;
-  const expiresIn = (data.expires_in as number | undefined) ?? 3600;
-
-  workDriveTokenCache = { accessToken, expiresAt: Date.now() + expiresIn * 1000 };
-  return accessToken;
+  return tokenFetchPromise;
 }
 
 /**
- * Find contact in Bigin by Email and return their WorkDrive_Folder_ID
+ * Find contact in CRM by Email and return their WorkDrive_Folder_ID
  */
-export async function getClientFolderIdFromBigin(email: string): Promise<string | null> {
-  const token = await getBiginAccessToken();
-  const res = await fetch(`${ZOHO_BIGIN_BASE}/Contacts/search?email=${encodeURIComponent(email)}`, {
+export async function getClientFolderIdFromCRM(email: string): Promise<string | null> {
+  const token = await getZohoAccessToken();
+  const res = await fetch(`${ZOHO_CRM_BASE}/Contacts/search?email=${encodeURIComponent(email)}`, {
     headers: { Authorization: `Zoho-oauthtoken ${token}` },
   });
 
@@ -104,14 +77,17 @@ export async function getClientFolderIdFromBigin(email: string): Promise<string 
   
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`Failed to fetch Bigin contact: ${res.status} - ${text}`);
+    throw new Error(`Failed to fetch CRM contact: ${res.status} - ${text}`);
   }
 
   const data = JSON.parse(text);
   if (!data.data || data.data.length === 0) return null;
 
   const contact = data.data[0];
-  const folderId = contact.WorkDrive_Folder_ID;
+  
+  // Custom fields in Zoho CRM usually replace spaces with underscores, e.g. "WorkDrive_Folder_ID"
+  // Let's check both standard naming and underscore naming just in case
+  const folderId = contact.WorkDrive_Folder_ID || contact["WorkDrive Folder ID"];
   
   return folderId ? String(folderId) : null;
 }
@@ -120,7 +96,7 @@ export async function getClientFolderIdFromBigin(email: string): Promise<string 
  * List files inside a WorkDrive folder
  */
 export async function listWorkDriveFolder(folderId: string) {
-  const token = await getWorkDriveAccessToken();
+  const token = await getZohoAccessToken();
   const res = await fetch(`${ZOHO_WORKDRIVE_BASE}/files/${folderId}/files`, {
     headers: {
       Authorization: `Zoho-oauthtoken ${token}`,
@@ -154,7 +130,7 @@ export async function listWorkDriveFolder(folderId: string) {
  * WorkDrive download API returns a redirect or the file stream
  */
 export async function getWorkDriveFileStream(fileId: string) {
-  const token = await getWorkDriveAccessToken();
+  const token = await getZohoAccessToken();
   
   const res = await fetch(`${ZOHO_WORKDRIVE_BASE}/download/${fileId}`, {
     headers: {

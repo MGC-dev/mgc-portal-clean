@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
-import { Upload, FileText, Download, Folder, File as FileIcon, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Upload, FileText, Download, Folder, File as FileIcon, Image as ImageIcon, Loader2, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
@@ -49,6 +49,10 @@ export default function ClientDocumentsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetId, setTargetId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  
+  // Viewer State
+  const [viewingFileId, setViewingFileId] = useState<string | null>(null);
+  const [viewingFileName, setViewingFileName] = useState<string | null>(null);
 
   useEffect(() => {
     fetchWorkDriveFiles();
@@ -257,14 +261,23 @@ export default function ClientDocumentsPage() {
                           <span className="text-xs text-gray-500">
                             {f.modified_time ? format(new Date(f.modified_time), "MMM d, yyyy") : ""}
                           </span>
-                          <a
-                            href={`/api/workdrive/download?fileId=${f.id}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-                            download
-                          >
-                            <Download className="w-4 h-4" />
-                            Download
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => { setViewingFileId(f.id); setViewingFileName(f.name); }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View
+                            </button>
+                            <a
+                              href={`/api/workdrive/download?fileId=${f.id}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                              download
+                            >
+                              <Download className="w-4 h-4" />
+                              Download
+                            </a>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -424,6 +437,26 @@ export default function ClientDocumentsPage() {
                     {deletingId === targetId ? "Deleting..." : "Delete"}
                   </button>
                 </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!viewingFileId} onOpenChange={(open) => !open && setViewingFileId(null)}>
+              <DialogContent className="sm:max-w-5xl h-[85vh] flex flex-col p-0 overflow-hidden gap-0">
+                <DialogHeader className="px-6 py-4 border-b bg-gray-50/50 shrink-0">
+                  <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    {viewingFileName || "Document Viewer"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex-1 bg-gray-100/50 relative">
+                  {viewingFileId && (
+                    <iframe
+                      src={`/api/workdrive/download?fileId=${viewingFileId}&view=true`}
+                      className="w-full h-full border-0 absolute inset-0"
+                      title="Document Viewer"
+                    />
+                  )}
+                </div>
               </DialogContent>
             </Dialog>
 

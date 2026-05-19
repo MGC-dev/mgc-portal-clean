@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getClientFolderIdFromBigin, listWorkDriveFolder, getWorkDriveFileStream } from "@/lib/zoho-workdrive";
+import { getClientFolderIdFromCRM, listWorkDriveFolder, getWorkDriveFileStream } from "@/lib/zoho-workdrive";
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 1. Get client's folder ID
-    const folderId = await getClientFolderIdFromBigin(user.email);
+    const folderId = await getClientFolderIdFromCRM(user.email);
     if (!folderId) {
       return new NextResponse("No WorkDrive folder assigned", { status: 403 });
     }
@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
     // 3. Proxy download
     const fileStreamResponse = await getWorkDriveFileStream(fileId);
     
+    const isView = req.nextUrl.searchParams.get("view") === "true";
+
     // Copy headers from Zoho's response, especially Content-Type and Content-Disposition
     const headers = new Headers();
     if (fileStreamResponse.headers.get("content-type")) {
@@ -43,8 +45,8 @@ export async function GET(req: NextRequest) {
       headers.set("Content-Type", "application/octet-stream");
     }
     
-    if (fileStreamResponse.headers.get("content-disposition")) {
-      headers.set("Content-Disposition", fileStreamResponse.headers.get("content-disposition")!);
+    if (isView) {
+      headers.set("Content-Disposition", `inline; filename="${targetFile.name || 'document'}"`);
     } else {
       headers.set("Content-Disposition", `attachment; filename="${targetFile.name || 'document'}"`);
     }
