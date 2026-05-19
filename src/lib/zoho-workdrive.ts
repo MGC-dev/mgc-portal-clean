@@ -113,16 +113,20 @@ export async function listWorkDriveFolder(folderId: string) {
   if (!data.data) return [];
 
   // Map the JSON:API format to a simpler structure
-  return data.data.map((item: any) => ({
-    id: item.id,
-    name: item.attributes.name,
-    extn: item.attributes.extn,
-    size: item.attributes.size,
-    created_time: item.attributes.created_time_in_millisecond,
-    modified_time: item.attributes.modified_time_in_millisecond,
-    type: item.attributes.type, // 'file' or 'folder'
-    permalink: item.attributes.permalink,
-  })).filter((item: any) => item.type === "1" || item.type === "file" || item.attributes?.is_folder === false || item.extn);
+  return data.data.map((item: any) => {
+    const is_folder = item.attributes?.is_folder === true || item.type === "0" || item.type === "folder" || !item.attributes.extn;
+    return {
+      id: item.id,
+      name: item.attributes.name,
+      extn: item.attributes.extn,
+      size: item.attributes.storage_info?.size_in_bytes || item.attributes.size || 0,
+      created_time: item.attributes.created_time_in_millisecond,
+      modified_time: item.attributes.modified_time_in_millisecond,
+      type: item.attributes.type, // 'file' or 'folder'
+      is_folder,
+      permalink: item.attributes.permalink,
+    };
+  });
 }
 
 /**
@@ -143,6 +147,61 @@ export async function getWorkDriveFileStream(fileId: string) {
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to download WorkDrive file: ${res.status} - ${text}`);
+  }
+
+  return res;
+}
+
+/**
+ * Request folder zip creation via multizip and download the zip stream
+ */
+export async function getWorkDriveFolderZipStream(folderId: string) {
+  const token = await getZohoAccessToken();
+  
+  const multizipRes = await fetch(`${ZOHO_WORKDRIVE_BASE}/multizip`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+      'Content-Type': 'application/vnd.api+json',
+      Accept: 'application/vnd.api+json',
+    },
+    body: JSON.stringify({
+      data: {
+        attributes: {
+          resource_id: folderId
+        },
+        type: "files"
+      }
+    }),
+    cache: "no-store"
+  });
+
+  if (!multizipRes.ok) {
+    const text = await multizipRes.text();
+    throw new Error(`Failed to create WorkDrive folder ZIP: ${multizipRes.status} - ${text}`);
+  }
+
+  const data = await multizipRes.json();
+  console.log("[WorkDrive Debug] Multizip Response Status:", multizipRes.status);
+  console.log("[WorkDrive Debug] Multizip Response Data:", JSON.stringify(data));
+  const dlLink = data.download_link;
+  if (!dlLink) {
+    throw new Error(`No download link returned from Zoho multizip API. Response keys: ${Object.keys(data || {}).join(", ")}`);
+  }
+
+  const parts = dlLink.split("/");
+  const zipId = parts[parts.length - 1];
+
+  const res = await fetch(`${ZOHO_WORKDRIVE_BASE}/download/${zipId}`, {
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to download WorkDrive folder ZIP: ${res.status} - ${text}`);
   }
 
   return res;

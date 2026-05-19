@@ -25,6 +25,7 @@ type WorkDriveFile = {
   modified_time: number;
   type: string;
   permalink: string;
+  is_folder?: boolean;
 };
 
 export default function ClientDocumentsPage() {
@@ -35,6 +36,10 @@ export default function ClientDocumentsPage() {
   const [wdFiles, setWdFiles] = useState<WorkDriveFile[]>([]);
   const [wdLoading, setWdLoading] = useState(true);
   const [wdError, setWdError] = useState<string | null>(null);
+  
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [rootFolderId, setRootFolderId] = useState<string | null>(null);
+  const [folderHistory, setFolderHistory] = useState<{id: string, name: string}[]>([]);
 
   // Upload State
   const [docs, setDocs] = useState<ClientDoc[]>([]);
@@ -59,18 +64,49 @@ export default function ClientDocumentsPage() {
     fetchUploadedDocs();
   }, []);
 
-  async function fetchWorkDriveFiles() {
+  async function fetchWorkDriveFiles(folderId?: string, folderName?: string, isBack?: boolean) {
     setWdLoading(true);
     setWdError(null);
     try {
-      const res = await fetch("/api/workdrive/files");
+      const url = folderId ? `/api/workdrive/files?folderId=${folderId}` : "/api/workdrive/files";
+      const res = await fetch(url);
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || json?.message || "Failed to load files");
       setWdFiles((json?.files || []) as WorkDriveFile[]);
+      setCurrentFolderId(json?.folderId);
+      if (!rootFolderId && json?.rootFolderId) {
+        setRootFolderId(json?.rootFolderId);
+      }
+      
+      if (folderId && folderName && !isBack) {
+        setFolderHistory(prev => [...prev, { id: folderId, name: folderName }]);
+      } else if (!folderId) {
+        setFolderHistory([]);
+      }
     } catch (e: any) {
       setWdError(e?.message || "Failed to load files");
     } finally {
       setWdLoading(false);
+    }
+  }
+
+  function handleFolderClick(f: WorkDriveFile) {
+    fetchWorkDriveFiles(f.id, f.name);
+  }
+
+  function handleBackClick() {
+    if (folderHistory.length > 0) {
+      const newHistory = [...folderHistory];
+      newHistory.pop(); // remove current
+      setFolderHistory(newHistory);
+      
+      if (newHistory.length > 0) {
+        const prevFolder = newHistory[newHistory.length - 1];
+        fetchWorkDriveFiles(prevFolder.id, prevFolder.name, true);
+      } else {
+        // back to root
+        fetchWorkDriveFiles(rootFolderId || undefined, undefined, true);
+      }
     }
   }
 
@@ -150,7 +186,8 @@ export default function ClientDocumentsPage() {
     }
   }
 
-  function getFileIcon(extn: string) {
+  function getFileIcon(extn: string, isFolder?: boolean) {
+    if (isFolder) return <Folder className="w-8 h-8 text-blue-400 fill-blue-100" />;
     const ext = (extn || "").toLowerCase();
     if (["jpg", "jpeg", "png", "gif", "svg"].includes(ext)) return <ImageIcon className="w-8 h-8 text-blue-500" />;
     if (ext === "pdf") return <FileText className="w-8 h-8 text-red-500" />;
@@ -215,13 +252,44 @@ export default function ClientDocumentsPage() {
             {activeTab === "workdrive" && (
               <div className="bg-white border rounded-2xl p-6 shadow-sm min-h-[400px]">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold">Shared Files</h2>
-                  <button 
-                    onClick={fetchWorkDriveFiles}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Refresh
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-semibold">
+                      {folderHistory.length > 0 ? folderHistory[folderHistory.length - 1].name : "Shared Files"}
+                    </h2>
+                    {folderHistory.length > 0 && (
+                      <button 
+                        onClick={handleBackClick}
+                        className="ml-4 text-sm px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                      >
+                        ← Back
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {currentFolderId && (
+                      <a
+                        href={`/api/workdrive/download?fileId=${currentFolderId}&isFolder=true&folderId=${folderHistory.length > 1 ? folderHistory[folderHistory.length - 2].id : rootFolderId || ''}`}
+                        className="text-sm flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100/85 px-3 py-1.5 rounded-lg transition-colors"
+                        download
+                      >
+                        <Download className="w-4 h-4" />
+                        Download ZIP
+                      </a>
+                    )}
+                    <button 
+                      onClick={() => {
+                        if (folderHistory.length > 0) {
+                          const current = folderHistory[folderHistory.length - 1];
+                          fetchWorkDriveFiles(current.id, current.name, true);
+                        } else {
+                          fetchWorkDriveFiles();
+                        }
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Refresh
+                    </button>
+                  </div>
                 </div>
 
                 {wdLoading ? (
@@ -245,14 +313,14 @@ export default function ClientDocumentsPage() {
                       <div key={f.id} className="group relative border rounded-xl p-4 hover:border-blue-300 hover:shadow-md transition-all bg-gray-50 hover:bg-white flex flex-col h-full">
                         <div className="flex items-start gap-3 mb-4">
                           <div className="shrink-0 bg-white p-2 rounded-lg border shadow-sm">
-                            {getFileIcon(f.extn)}
+                            {getFileIcon(f.extn, f.is_folder)}
                           </div>
                           <div className="min-w-0 flex-1">
                             <h3 className="font-medium text-gray-900 truncate" title={f.name}>
                               {f.name}
                             </h3>
                             <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-medium">
-                              {f.extn} • {formatBytes(f.size)}
+                              {f.is_folder ? "Folder" : `${f.extn} • ${formatBytes(f.size)}`}
                             </p>
                           </div>
                         </div>
@@ -262,21 +330,42 @@ export default function ClientDocumentsPage() {
                             {f.modified_time ? format(new Date(f.modified_time), "MMM d, yyyy") : ""}
                           </span>
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => { setViewingFileId(f.id); setViewingFileName(f.name); }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-                            >
-                              <Eye className="w-4 h-4" />
-                              View
-                            </button>
-                            <a
-                              href={`/api/workdrive/download?fileId=${f.id}`}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-                              download
-                            >
-                              <Download className="w-4 h-4" />
-                              Download
-                            </a>
+                            {f.is_folder ? (
+                              <div className="flex items-center gap-2 w-full">
+                                <button
+                                  onClick={() => handleFolderClick(f)}
+                                  className="inline-flex flex-1 justify-center items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
+                                >
+                                  Open Folder
+                                </button>
+                                <a
+                                  href={`/api/workdrive/download?fileId=${f.id}&isFolder=true&folderId=${currentFolderId || ''}`}
+                                  className="inline-flex items-center justify-center p-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                                  title="Download Folder ZIP"
+                                  download
+                                >
+                                  <Download className="w-4.5 h-4.5" />
+                                </a>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => { setViewingFileId(f.id); setViewingFileName(f.name); }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  View
+                                </button>
+                                <a
+                                  href={`/api/workdrive/download?fileId=${f.id}&folderId=${currentFolderId || ''}`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                  download
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Download
+                                </a>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -451,7 +540,7 @@ export default function ClientDocumentsPage() {
                 <div className="flex-1 bg-gray-100/50 relative">
                   {viewingFileId && (
                     <iframe
-                      src={`/api/workdrive/download?fileId=${viewingFileId}&view=true`}
+                      src={`/api/workdrive/download?fileId=${viewingFileId}&view=true&folderId=${currentFolderId || ''}`}
                       className="w-full h-full border-0 absolute inset-0"
                       title="Document Viewer"
                     />
