@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getClientFolderIdFromCRM, listWorkDriveFolder, getWorkDriveFileStream, getWorkDriveFolderZipStream } from "@/lib/zoho-workdrive";
+import { getClientFolderIdFromBigin, listWorkDriveFolder, getWorkDriveFileStream, getWorkDriveFolderZipStream } from "@/lib/zoho-workdrive";
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const requestedFolderId = req.nextUrl.searchParams.get("folderId");
 
     // 1. Get client's root folder ID
-    const rootFolderId = await getClientFolderIdFromCRM(user.email);
+    const rootFolderId = await getClientFolderIdFromBigin(user.email);
     if (!rootFolderId) {
       return new NextResponse("No WorkDrive folder assigned", { status: 403 });
     }

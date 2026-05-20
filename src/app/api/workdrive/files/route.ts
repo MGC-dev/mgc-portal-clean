@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getClientFolderIdFromCRM, listWorkDriveFolder } from "@/lib/zoho-workdrive";
+import { getClientFolderIdFromBigin, listWorkDriveFolder } from "@/lib/zoho-workdrive";
 
 export async function GET(request: Request) {
   try {
@@ -21,9 +21,9 @@ export async function GET(request: Request) {
 
     console.log(`[WorkDrive Debug] Looking up WorkDrive root folder for email: ${email}`);
 
-    // 1. Get root folder ID from CRM
-    const rootFolderId = await getClientFolderIdFromCRM(email);
-    console.log(`[WorkDrive Debug] Found root folderId in CRM: ${rootFolderId}`);
+    // 1. Get root folder ID from Bigin
+    const rootFolderId = await getClientFolderIdFromBigin(email);
+    console.log(`[WorkDrive Debug] Found root folderId in Bigin: ${rootFolderId}`);
     
     if (!rootFolderId) {
       console.log(`[WorkDrive Debug] No folder assigned for this user.`);
