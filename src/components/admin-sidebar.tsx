@@ -199,7 +199,7 @@ export default function AdminSidebar() {
         </button>
 
         <Link
-          href="/api/auth/signout"
+          href="/auth/logout"
           className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[#6b8a96] hover:bg-red-50 hover:text-red-500 transition-all duration-200 ${
             collapsed ? "justify-center" : ""
           }`}
