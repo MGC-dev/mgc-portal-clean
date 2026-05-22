@@ -1,283 +1,653 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Search, ChevronDown, ChevronUp, SortAsc, SortDesc } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import {
+  Folder,
+  FileText,
+  FileImage,
+  File,
+  Upload,
+  Plus,
+  ChevronRight,
+  Home,
+  RefreshCw,
+  X,
+  Download,
+  Eye,
+  FolderPlus,
+} from "lucide-react";
 
-type AdminDoc = {
+type User = {
   id: string;
-  title: string;
-  description?: string | null;
-  status?: string;
-  created_at?: string;
-  client_user_id: string;
-  file_path: string;
-  client_profile?: { email?: string | null; full_name?: string | null } | null;
+  email: string;
+  profile?: { full_name?: string };
 };
 
+type WorkDriveItem = {
+  id: string;
+  name: string;
+  type: string;
+  is_folder: boolean;
+  size: number;
+  extn?: string;
+  permalink?: string;
+  created_time?: string | number;
+  modified_time?: string | number;
+};
+
+function getFileIcon(item: WorkDriveItem) {
+  if (item.is_folder) return <Folder className="w-7 h-7 text-blue-500" />;
+  const ext = (item.extn || "").toLowerCase();
+  if (["pdf"].includes(ext)) return <FileText className="w-7 h-7 text-red-400" />;
+  if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext))
+    return <FileImage className="w-7 h-7 text-green-400" />;
+  if (["doc", "docx"].includes(ext)) return <FileText className="w-7 h-7 text-blue-400" />;
+  if (["xls", "xlsx"].includes(ext)) return <FileText className="w-7 h-7 text-emerald-500" />;
+  return <File className="w-7 h-7 text-gray-400" />;
+}
+
+function isPreviewable(item: WorkDriveItem) {
+  if (item.is_folder) return false;
+  const ext = (item.extn || "").toLowerCase();
+  return ["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "txt", "csv"].includes(ext);
+}
+
+function isImage(item: WorkDriveItem) {
+  const ext = (item.extn || "").toLowerCase();
+  return ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext);
+}
+
+function formatSize(bytes: number) {
+  if (!bytes || bytes === 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function formatDate(ts?: string | number) {
+  if (!ts) return "—";
+  const date = new Date(Number(ts));
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 export default function AdminClientDocumentsPage() {
-  const [docs, setDocs] = useState<AdminDoc[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"name" | "date">("name");
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [selected, setSelected] = useState<AdminDoc | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [userSearch, setUserSearch] = useState("");
+
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [rootFolderId, setRootFolderId] = useState<string | null>(null);
+
+  const [items, setItems] = useState<WorkDriveItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [itemsError, setItemsError] = useState<string | null>(null);
+  const [folderHistory, setFolderHistory] = useState<{ id: string; name: string }[]>([]);
+
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [showFolderInput, setShowFolderInput] = useState(false);
+
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Preview state
+  const [previewItem, setPreviewItem] = useState<WorkDriveItem | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
-  function formatDateTime(value?: string) {
-    if (!value) return "";
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  async function fetchUsers() {
     try {
-      const d = new Date(value);
-      return d.toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch {
-      return String(value);
-    }
-  }
-
-  function groupByClient(items: AdminDoc[]) {
-    const groups = new Map<string, { label: string; items: AdminDoc[] }>();
-    for (const it of items) {
-      const label = it.client_profile?.full_name || it.client_profile?.email || it.client_user_id;
-      const key = label || it.client_user_id;
-      if (!groups.has(key)) groups.set(key, { label: label || it.client_user_id, items: [] });
-      groups.get(key)!.items.push(it);
-    }
-    // Sort items in each group by created_at desc
-    for (const g of groups.values()) {
-      g.items.sort((a, b) => (new Date(b.created_at || 0).getTime()) - (new Date(a.created_at || 0).getTime()));
-    }
-    // Return groups sorted by label
-    let arr = Array.from(groups.values());
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      arr = arr
-        .map((g) => ({
-          label: g.label,
-          items: g.items.filter((d) => d.title.toLowerCase().includes(q) || (d.client_profile?.full_name || "").toLowerCase().includes(q)),
-        }))
-        .filter((g) => g.items.length > 0 || g.label.toLowerCase().includes(q));
-    }
-    if (statusFilter !== "all") {
-      arr = arr.map((g) => ({ label: g.label, items: g.items.filter((d) => (d.status || "submitted") === statusFilter) }));
-    }
-    arr = arr.sort((a, b) => a.label.localeCompare(b.label));
-    if (sortBy === "date") {
-      arr = arr.map((g) => ({
-        label: g.label,
-        items: [...g.items].sort((a, b) => {
-          const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-          const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-          return tb - ta;
-        }),
-      }));
-    } else if (sortBy === "name") {
-      arr = arr.map((g) => ({ label: g.label, items: [...g.items].sort((a, b) => String(a.title).localeCompare(String(b.title))) }));
-    }
-    return arr;
-  }
-
-  async function loadDocs() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/client-documents", { headers: { accept: "application/json" } });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Failed to load documents");
-      setDocs((json?.documents || []) as AdminDoc[]);
-    } catch (e: any) {
-      setError(e?.message || "Failed to load documents");
+      const res = await fetch("/api/admin/users?perPage=1000");
+      const data = await res.json();
+      if (res.ok && data.users) setUsers(data.users);
+    } catch (e) {
+      console.error(e);
     } finally {
-      setLoading(false);
+      setLoadingUsers(false);
     }
   }
 
   useEffect(() => {
-    loadDocs();
-  }, []);
+    if (selectedUser) {
+      setFolderHistory([]);
+      setPreviewItem(null);
+      setPreviewUrl(null);
+      setItemsError(null);
+      loadWorkDrive(selectedUser.email, null);
+    } else {
+      setItems([]);
+      setItemsError(null);
+      setRootFolderId(null);
+      setCurrentFolderId(null);
+    }
+  }, [selectedUser]);
 
-  async function openDoc(id: string) {
+  async function loadWorkDrive(email: string, folderId: string | null) {
+    setLoadingItems(true);
+    setItemsError(null);
     try {
-      const res = await fetch(`/api/client-documents/${id}/url`, { headers: { accept: "application/json" } });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Could not open document");
-      const url = json?.url as string;
-      if (url) window.open(url, "_blank");
-    } catch (e) {}
-  }
+      let url = `/api/admin/workdrive/files?email=${encodeURIComponent(email)}`;
+      if (folderId) url += `&folderId=${encodeURIComponent(folderId)}`;
 
-  function toggleGroup(label: string) {
-    setCollapsedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
-  }
-  function collapseAll() {
-    const next: Record<string, boolean> = {};
-    groupByClient(docs).forEach((g) => { next[g.label] = true; });
-    setCollapsedGroups(next);
-  }
-  function expandAll() {
-    const next: Record<string, boolean> = {};
-    groupByClient(docs).forEach((g) => { next[g.label] = false; });
-    setCollapsedGroups(next);
-  }
-  async function selectForPreview(doc: AdminDoc) {
-    setSelected(doc);
-    setPreviewUrl(null);
-    try {
-      const res = await fetch(`/api/client-documents/${doc.id}/url`, { headers: { accept: "application/json" } });
-      const json = await res.json();
-      if (res.ok && json?.url) setPreviewUrl(json.url as string);
-    } catch {}
-  }
+      const res = await fetch(url);
+      const data = await res.json();
 
-  async function deleteDoc(id: string) {
-    setDeletingId(id);
-    try {
-      const res = await fetch(`/api/admin/client-documents/${id}`, { method: "DELETE" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Delete failed");
-      await loadDocs();
-    } catch (e) {
-      // noop, could show toast
+      if (res.ok) {
+        setItems(data.files || []);
+        if (!folderId) {
+          setRootFolderId(data.rootFolderId);
+          setCurrentFolderId(data.rootFolderId);
+        } else {
+          setCurrentFolderId(folderId);
+        }
+      } else {
+        setItemsError(data.error || "Failed to load WorkDrive folder.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      setItemsError(e.message || "Failed to load WorkDrive folder.");
     } finally {
-      setDeletingId(null);
+      setLoadingItems(false);
     }
   }
 
-  return (
-    <div className="min-h-screen bg-white text-gray-900 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Admin • Client Documents</h1>
-          <Link href="/admin" className="text-blue-600 hover:underline">Back to Admin</Link>
-        </header>
+  async function openPreview(item: WorkDriveItem) {
+    setPreviewItem(item);
+    setPreviewUrl(null);
+    setPreviewLoading(true);
+    const url = `/api/admin/workdrive/view?fileId=${encodeURIComponent(item.id)}&fileName=${encodeURIComponent(item.name)}&inline=true`;
+    setPreviewUrl(url);
+    setPreviewLoading(false);
+  }
 
-        <div className="rounded-lg border p-4">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 flex-1 min-w-[220px] bg-gray-100 rounded-lg px-3 py-2">
-                <Search className="w-4 h-4 text-gray-500" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} className="bg-transparent flex-1 outline-none text-sm" placeholder="Search clients or documents" />
-              </div>
-              <button onClick={collapseAll} className="px-3 py-2 rounded-md border text-sm inline-flex items-center gap-1">
-                <ChevronUp className="w-4 h-4" /> Collapse all
-              </button>
-              <button onClick={expandAll} className="px-3 py-2 rounded-md border text-sm inline-flex items-center gap-1">
-                <ChevronDown className="w-4 h-4" /> Expand all
-              </button>
+  function closePreview() {
+    setPreviewItem(null);
+    setPreviewUrl(null);
+  }
+
+  async function createRootFolder() {
+    if (!selectedUser) return;
+    const masterFolderId = process.env.NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID;
+    if (!masterFolderId) {
+      alert("Master Folder ID not configured (NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID).");
+      return;
+    }
+    const folderName = selectedUser.profile?.full_name || selectedUser.email;
+    setIsCreatingFolder(true);
+    try {
+      const res = await fetch("/api/admin/workdrive/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          parentFolderId: masterFolderId,
+          folderName,
+          clientEmail: selectedUser.email,
+          isRootClientFolder: true,
+        }),
+      });
+      if (res.ok) {
+        await loadWorkDrive(selectedUser.email, null);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to create root folder");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  }
+
+  async function createSubFolder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentFolderId || !newFolderName.trim()) return;
+    setIsCreatingFolder(true);
+    try {
+      const res = await fetch("/api/admin/workdrive/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentFolderId: currentFolderId, folderName: newFolderName.trim() }),
+      });
+      if (res.ok) {
+        setNewFolderName("");
+        setShowFolderInput(false);
+        await loadWorkDrive(selectedUser!.email, currentFolderId);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to create folder");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  }
+
+  async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !currentFolderId) return;
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folderId", currentFolderId);
+    try {
+      const res = await fetch("/api/admin/workdrive/files/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        await loadWorkDrive(selectedUser!.email, currentFolderId);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to upload file");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  function handleFolderClick(folder: WorkDriveItem) {
+    closePreview();
+    setFolderHistory((h) => [...h, { id: folder.id, name: folder.name }]);
+    loadWorkDrive(selectedUser!.email, folder.id);
+  }
+
+  function handleBreadcrumbClick(index: number) {
+    closePreview();
+    if (index === -1) {
+      setFolderHistory([]);
+      loadWorkDrive(selectedUser!.email, rootFolderId);
+    } else {
+      const newHistory = folderHistory.slice(0, index + 1);
+      setFolderHistory(newHistory);
+      loadWorkDrive(selectedUser!.email, newHistory[newHistory.length - 1].id);
+    }
+  }
+
+  const filteredUsers = users.filter((u) => {
+    const q = userSearch.toLowerCase();
+    return (
+      u.email.toLowerCase().includes(q) ||
+      (u.profile?.full_name || "").toLowerCase().includes(q)
+    );
+  });
+
+  const folders = items.filter((i) => i.is_folder);
+  const files = items.filter((i) => !i.is_folder);
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-56px)] bg-[#f6f9fb]">
+      {/* Header */}
+      <header className="shrink-0 px-6 py-4 border-b border-[#e8eef1] bg-white flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-sky-50 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-sky-600"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-[#1a3340] tracking-tight">Client Documents</h1>
+            <p className="text-sm text-[#6b8a96]">Browse, upload and manage files in WorkDrive</p>
+          </div>
+        </div>
+        <Link href="/admin" className="text-sm font-medium text-[#264f5e] hover:bg-[#264f5e]/10 px-3 py-1.5 rounded-lg transition-colors">
+          Back to Admin
+        </Link>
+      </header>
+
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar: Client List */}
+        <div className="w-72 bg-white border-r border-[#e8eef1] flex flex-col shrink-0">
+          <div className="p-4 border-b border-[#e8eef1]">
+            <div className="relative">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b8a96]"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input
+                type="text"
+                placeholder="Search clients..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-[#e8eef1] rounded-xl outline-none focus:border-[#264f5e]/40 focus:ring-2 focus:ring-[#264f5e]/10 bg-[#f6f9fb]"
+              />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-xs text-gray-500">Sort:</span>
-                <button onClick={() => setSortBy("name")} className={`px-3 py-1.5 rounded-md text-xs border inline-flex items-center gap-1 ${sortBy === "name" ? "bg-gray-200" : "bg-white"}`}>
-                  <SortAsc className="w-4 h-4" /> Name
-                </button>
-                <button onClick={() => setSortBy("date")} className={`px-3 py-1.5 rounded-md text-xs border inline-flex items-center gap-1 ${sortBy === "date" ? "bg-gray-200" : "bg-white"}`}>
-                  <SortDesc className="w-4 h-4" /> Date
-                </button>
+          </div>
+          <div className="overflow-y-auto flex-1 p-3 space-y-1">
+            {loadingUsers ? (
+              <div className="text-xs text-[#6b8a96] text-center py-6 flex flex-col items-center gap-2">
+                <span className="h-4 w-4 border-2 border-[#264f5e]/30 border-t-[#264f5e] rounded-full animate-spin" />
+                Loading…
               </div>
-            </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-xs text-[#6b8a96] text-center py-6">No clients found</div>
+            ) : (
+              filteredUsers.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => setSelectedUser(user)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl transition-all ${
+                    selectedUser?.id === user.id
+                      ? "bg-[#264f5e] text-white shadow-sm"
+                      : "hover:bg-[#f6f9fb] text-[#1a3340]"
+                  }`}
+                >
+                  <div className={`font-semibold text-sm truncate ${selectedUser?.id === user.id ? "text-white" : "text-[#1a3340]"}`}>
+                    {user.profile?.full_name || "Unnamed User"}
+                  </div>
+                  <div className={`text-[11px] truncate mt-0.5 ${selectedUser?.id === user.id ? "text-white/70" : "text-[#6b8a96]"}`}>{user.email}</div>
+                </button>
+              ))
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <section className="lg:col-span-2 rounded-lg border p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">Submitted Documents</h2>
-              {!loading && docs.length > 0 && (
-                <div className="text-sm text-gray-600">Total: {docs.length}</div>
-              )}
-            </div>
-
-            {loading ? (
-              <div className="text-sm text-gray-600">Loading...</div>
-            ) : error ? (
-              <div className="text-sm text-red-600">{error}</div>
-            ) : groupByClient(docs).length === 0 ? (
-              <div className="text-sm text-gray-600">No documents submitted.</div>
-            ) : (
-              <div className="space-y-4">
-                {groupByClient(docs).map((group) => {
-                  const collapsed = !!collapsedGroups[group.label];
-                  return (
-                    <div key={group.label} className="rounded-xl border bg-white shadow-sm">
-                      <div className="px-4 py-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-600/10 text-indigo-700 flex items-center justify-center text-sm font-semibold">
-                            {String(group.label).charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-semibold">{group.label}</div>
-                            <div className="text-xs text-gray-600">{group.items.length} document{group.items.length > 1 ? 's' : ''}</div>
-                          </div>
-                        </div>
-                        <button onClick={() => toggleGroup(group.label)} className="px-3 py-1.5 text-xs rounded-md border inline-flex items-center gap-1">
-                          {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                          {collapsed ? "Expand" : "Collapse"}
-                        </button>
-                      </div>
-                      {!collapsed && (
-                        <ul className="p-3 space-y-2">
-                          {group.items.map((d) => (
-                            <li key={d.id} className="flex items-center justify-between border rounded-md p-3">
-                              <div>
-                                <div className="font-medium">{d.title}</div>
-                                <div className="text-xs text-gray-600">{d.status || "submitted"}</div>
-                                {d.created_at && (
-                                  <div className="text-xs text-gray-500">Uploaded: {formatDateTime(d.created_at)}</div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button onClick={() => selectForPreview(d)} className="px-3 py-1.5 text-xs rounded-md border">Preview</button>
-                                <button onClick={() => openDoc(d.id)} className="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white">Open</button>
-                                <button
-                                  onClick={() => deleteDoc(d.id)}
-                                  disabled={deletingId === d.id}
-                                  className="px-3 py-1.5 text-xs rounded-md border text-red-600 disabled:opacity-50"
-                                >
-                                  {deletingId === d.id ? "Deleting..." : "Delete"}
-                                </button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
+        {/* Main content */}
+        <div className="flex-1 flex min-w-0 bg-[#f6f9fb]">
+          {/* File browser */}
+          <div className={`flex flex-col min-w-0 transition-all ${previewItem ? "w-1/2" : "flex-1"}`}>
+            {!selectedUser ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#6b8a96]">
+                <div className="h-16 w-16 bg-white border border-[#e8eef1] rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+                  <Folder className="w-8 h-8 text-[#264f5e]/40" />
+                </div>
+                <p className="text-sm font-medium">Select a client to view their WorkDrive folder</p>
               </div>
-            )}
-          </section>
+            ) : loadingItems && !currentFolderId ? (
+              <div className="flex-1 flex items-center justify-center text-[#264f5e]">
+                <span className="h-5 w-5 border-2 border-[#264f5e]/30 border-t-[#264f5e] rounded-full animate-spin mr-2" />
+                <span className="text-sm font-medium">Loading WorkDrive...</span>
+              </div>
+            ) : itemsError ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#6b8a96] space-y-4 p-8">
+                <div className="h-16 w-16 bg-red-50 rounded-2xl flex items-center justify-center mb-2 shadow-sm">
+                  <X className="w-8 h-8 text-red-500" />
+                </div>
+                <p className="text-sm font-medium text-center text-red-500 max-w-md">{itemsError}</p>
+                <button
+                  onClick={() => loadWorkDrive(selectedUser.email, currentFolderId)}
+                  className="px-4 py-2 border border-[#e8eef1] text-[#264f5e] rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm mt-2"
+                >
+                  Retry Connection
+                </button>
+              </div>
+            ) : !rootFolderId ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-[#6b8a96] space-y-5 p-8">
+                <div className="h-20 w-20 bg-white border border-[#e8eef1] rounded-3xl flex items-center justify-center shadow-sm">
+                  <Folder className="w-10 h-10 text-[#264f5e]/40" />
+                </div>
+                <p className="text-sm text-center max-w-sm">
+                  No WorkDrive folder has been assigned to <span className="font-semibold text-[#1a3340]">{selectedUser.profile?.full_name || selectedUser.email}</span> yet.
+                </p>
+                <button
+                  onClick={createRootFolder}
+                  disabled={isCreatingFolder}
+                  className="px-5 py-2.5 bg-[#264f5e] text-white rounded-xl hover:bg-[#1f3f4c] disabled:opacity-50 font-semibold text-sm flex items-center gap-2 shadow-sm transition-colors"
+                >
+                  {isCreatingFolder ? (
+                    <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <FolderPlus className="w-4 h-4" />
+                  )}
+                  {isCreatingFolder ? "Creating..." : "Create Folder"}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col h-full bg-white m-4 rounded-2xl border border-[#e8eef1] shadow-sm overflow-hidden">
+                {/* Toolbar */}
+                <div className="border-b border-[#e8eef1] px-4 py-3 flex items-center gap-3 bg-white">
+                  {/* Breadcrumb */}
+                  <div className="flex items-center text-sm font-medium text-[#6b8a96] flex-1 overflow-x-auto whitespace-nowrap hide-scrollbar">
+                    <button
+                      onClick={() => handleBreadcrumbClick(-1)}
+                      className="flex items-center gap-1.5 hover:text-[#264f5e] transition-colors shrink-0 bg-[#f6f9fb] px-2.5 py-1 rounded-lg"
+                    >
+                      <Home className="w-3.5 h-3.5" />
+                      <span>{selectedUser.profile?.full_name || selectedUser.email}</span>
+                    </button>
+                    {folderHistory.map((folder, idx) => (
+                      <span key={folder.id} className="flex items-center shrink-0">
+                        <ChevronRight className="w-4 h-4 mx-1.5 text-[#e8eef1]" />
+                        <button
+                          onClick={() => handleBreadcrumbClick(idx)}
+                          className="hover:text-[#264f5e] transition-colors"
+                        >
+                          {folder.name}
+                        </button>
+                      </span>
+                    ))}
+                  </div>
 
-          <aside className="rounded-lg border p-4 bg-white">
-            <div className="flex items-center justify-between">
-              <div className="font-semibold">Quick preview</div>
-              {selected && (
-                <button className="text-xs text-gray-500" onClick={() => { setSelected(null); setPreviewUrl(null); }}>Clear</button>
-              )}
-            </div>
-            {!selected ? (
-              <p className="mt-2 text-sm text-gray-600">Select a file to view details</p>
-            ) : previewUrl ? (
-              <div className="mt-3">
-                <iframe src={previewUrl} className="w-full h-[300px] rounded-md border" />
-                <div className="mt-2 text-sm">
-                  <div className="font-medium">{selected.title}</div>
-                  {selected.description && <div className="text-gray-600">{selected.description}</div>}
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => loadWorkDrive(selectedUser.email, currentFolderId)}
+                      className="p-2 text-[#6b8a96] hover:text-[#264f5e] hover:bg-[#264f5e]/10 rounded-xl transition-colors"
+                      title="Refresh"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loadingItems ? "animate-spin" : ""}`} />
+                    </button>
+
+                    <div className="w-px h-5 bg-[#e8eef1] mx-1" />
+
+                    {/* New Folder */}
+                    {showFolderInput ? (
+                      <form onSubmit={createSubFolder} className="flex items-center gap-1.5">
+                        <input
+                          autoFocus
+                          type="text"
+                          placeholder="Folder name"
+                          value={newFolderName}
+                          onChange={(e) => setNewFolderName(e.target.value)}
+                          className="border border-[#e8eef1] rounded-xl px-3 py-1.5 text-sm outline-none focus:border-[#264f5e]/40 focus:ring-2 focus:ring-[#264f5e]/10 w-40 text-[#1a3340]"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isCreatingFolder || !newFolderName.trim()}
+                          className="px-3 py-1.5 bg-[#264f5e] text-white font-semibold rounded-xl text-sm disabled:opacity-50 hover:bg-[#1f3f4c] transition-colors"
+                        >
+                          {isCreatingFolder ? "…" : "Create"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowFolderInput(false); setNewFolderName(""); }}
+                          className="px-3 py-1.5 bg-gray-100 text-[#6b8a96] font-semibold rounded-xl text-sm hover:bg-gray-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <button
+                        onClick={() => setShowFolderInput(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-[#e8eef1] rounded-xl text-sm font-semibold text-[#1a3340] hover:bg-gray-50 transition-colors"
+                      >
+                        <FolderPlus className="w-4 h-4 text-[#264f5e]" />
+                        New Folder
+                      </button>
+                    )}
+
+                    {/* Upload */}
+                    <input
+                      type="file"
+                      id="file-upload"
+                      className="hidden"
+                      onChange={uploadFile}
+                      disabled={isUploading}
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className={`flex items-center gap-1.5 px-3 py-1.5 bg-[#264f5e]/10 text-[#264f5e] rounded-xl text-sm font-semibold cursor-pointer hover:bg-[#264f5e]/20 transition-colors ${
+                        isUploading ? "opacity-60 pointer-events-none" : ""
+                      }`}
+                    >
+                      {isUploading ? (
+                        <span className="h-4 w-4 border-2 border-[#264f5e]/30 border-t-[#264f5e] rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      {isUploading ? "Uploading…" : "Upload File"}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Files and Folders */}
+                <div className="flex-1 overflow-y-auto p-4 bg-[#f6f9fb]">
+                  {loadingItems && items.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-[#6b8a96]">
+                      <span className="h-5 w-5 border-2 border-[#264f5e]/30 border-t-[#264f5e] rounded-full animate-spin mb-3" />
+                      <p className="text-sm font-medium">Loading contents…</p>
+                    </div>
+                  ) : items.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-[#6b8a96]">
+                      <Folder className="w-12 h-12 text-[#264f5e]/20 mb-3" />
+                      <p className="text-sm font-medium">This folder is empty</p>
+                      <p className="text-xs mt-1">Upload files or create subfolders to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-[#e8eef1] overflow-hidden">
+                      {/* Table Header */}
+                      <div className="grid grid-cols-[1fr_120px_120px_48px] items-center px-6 py-3 border-b border-[#e8eef1] bg-[#fcfdfe]">
+                        <span className="text-[11px] font-bold text-[#6b8a96] uppercase tracking-wider">Name</span>
+                        <span className="text-[11px] font-bold text-[#6b8a96] uppercase tracking-wider">Size / Type</span>
+                        <span className="text-[11px] font-bold text-[#6b8a96] uppercase tracking-wider">Created</span>
+                        <span />
+                      </div>
+
+                      {/* Items */}
+                      <div className="divide-y divide-[#e8eef1]">
+                        {/* Folders */}
+                        {folders.map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => handleFolderClick(item)}
+                            className="grid grid-cols-[1fr_120px_120px_48px] items-center px-6 py-3.5 hover:bg-[#f6f9fb] transition-colors cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-4 min-w-0 pr-4">
+                              <Folder className="w-6 h-6 text-[#4a86e8] shrink-0 fill-[#4a86e8]/10" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-[#1a3340] truncate">{item.name}</p>
+                                <p className="text-[11px] font-medium text-[#6b8a96] mt-0.5 truncate">
+                                  Folder
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-[12px] font-medium text-[#6b8a96]">—</div>
+                            <div className="text-[12px] font-medium text-[#6b8a96]">{formatDate(item.created_time || item.modified_time)}</div>
+                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* Empty action area for folders to keep layout consistent */}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Files */}
+                        {files.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`grid grid-cols-[1fr_120px_120px_48px] items-center px-6 py-3.5 transition-colors cursor-default group ${
+                              previewItem?.id === item.id ? "bg-[#f6f9fb] shadow-[inset_2px_0_0_0_#264f5e]" : "hover:bg-[#f6f9fb]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-4 min-w-0 pr-4">
+                              <div className="shrink-0">{getFileIcon(item)}</div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-[#1a3340] truncate">{item.name}</p>
+                                <p className="text-[11px] font-medium text-[#6b8a96] mt-0.5 truncate">
+                                  {item.extn?.toUpperCase() || "FILE"} document
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-[12px] font-medium text-[#6b8a96]">{formatSize(item.size)}</div>
+                            <div className="text-[12px] font-medium text-[#6b8a96]">{formatDate(item.created_time || item.modified_time)}</div>
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {isPreviewable(item) && (
+                                <button
+                                  onClick={() => openPreview(item)}
+                                  className="p-1.5 text-[#6b8a96] hover:text-[#264f5e] hover:bg-[#264f5e]/10 rounded-lg transition-colors"
+                                  title="Preview"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              )}
+                              <a
+                                href={`/api/admin/workdrive/view?fileId=${encodeURIComponent(item.id)}&fileName=${encodeURIComponent(item.name)}&inline=false`}
+                                download={item.name}
+                                className="p-1.5 text-[#6b8a96] hover:text-[#264f5e] hover:bg-[#264f5e]/10 rounded-lg transition-colors"
+                                title="Download"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            ) : (
-              <p className="mt-2 text-sm text-gray-600">Generating preview…</p>
             )}
-          </aside>
+          </div>
+
+          {/* Preview Panel */}
+          {previewItem && (
+            <div className="w-1/2 border-l border-[#e8eef1] bg-white flex flex-col z-10 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)]">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8eef1] shrink-0 bg-white">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#1a3340] truncate">{previewItem.name}</p>
+                  <p className="text-[11px] font-medium text-[#6b8a96] mt-0.5">
+                    {previewItem.extn?.toUpperCase() || "FILE"} · {formatSize(previewItem.size)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <a
+                    href={`/api/admin/workdrive/view?fileId=${encodeURIComponent(previewItem.id)}&fileName=${encodeURIComponent(previewItem.name)}&inline=false`}
+                    download={previewItem.name}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-[#e8eef1] rounded-xl text-sm font-semibold text-[#264f5e] hover:bg-gray-50 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download
+                  </a>
+                  <button
+                    onClick={closePreview}
+                    className="p-1.5 text-[#6b8a96] hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 min-h-0 bg-[#f6f9fb] flex items-center justify-center p-4">
+                {previewLoading ? (
+                  <div className="flex flex-col items-center gap-2 text-[#264f5e]">
+                    <span className="h-6 w-6 border-2 border-[#264f5e]/30 border-t-[#264f5e] rounded-full animate-spin" />
+                    <span className="text-sm font-medium">Loading preview…</span>
+                  </div>
+                ) : previewUrl ? (
+                  <div className="w-full h-full rounded-2xl border border-[#e8eef1] bg-white shadow-sm overflow-hidden flex items-center justify-center">
+                    {isImage(previewItem) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={previewUrl}
+                        alt={previewItem.name}
+                        className="max-w-full max-h-full object-contain p-4"
+                      />
+                    ) : (
+                      <iframe
+                        src={previewUrl}
+                        className="w-full h-full border-0"
+                        title={previewItem.name}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center text-[#6b8a96]">
+                    <Eye className="w-8 h-8 opacity-40 mb-2" />
+                    <p className="text-sm font-medium">Preview unavailable</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

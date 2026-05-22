@@ -134,120 +134,154 @@ export default function AdminResourcesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 p-4 sm:p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold">Admin • Resources</h1>
-          <Link href="/admin" className="text-blue-600 hover:underline">Back to Admin</Link>
-        </header>
+    <div className="p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
+      {/* Page header */}
+      <header>
+        <p className="text-xs font-semibold tracking-widest text-[#264f5e]/60 uppercase mb-1">Admin Portal</p>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-violet-50 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-violet-600"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-[#1a3340] tracking-tight">Resource Library</h1>
+            <p className="text-sm text-[#6b8a96]">Upload documents and videos for clients</p>
+          </div>
+        </div>
+      </header>
 
-        <section className="rounded-lg border p-4 sm:p-6 space-y-4">
-          <h2 className="text-lg sm:text-xl font-semibold">Upload Resource</h2>
-          <p className="text-sm text-gray-600">Upload documents or videos and make them available in the client Resource Library.</p>
-          {error && <div className="text-sm text-red-600">{error}</div>}
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-1 md:grid-cols-2">
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium">Title</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full border rounded-md p-2" />
+      {error && (
+        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+      )}
+
+      {/* Upload form */}
+      <section className="rounded-2xl border border-[#e8eef1] bg-white shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#e8eef1]">
+          <h2 className="text-sm font-semibold text-[#1a3340]">Upload Resource</h2>
+          <p className="text-xs text-[#6b8a96] mt-0.5">Upload documents or videos and assign them to a specific client.</p>
+        </div>
+        <div className="p-6">
+          {phase !== "idle" && (
+            <div className="mb-4 flex items-center gap-2 text-sm text-[#264f5e] font-medium">
+              <span className="h-3.5 w-3.5 border-2 border-[#264f5e]/30 border-t-[#264f5e] rounded-full animate-spin" />
+              {phase === "validating" ? "Validating…" : phase === "uploading" ? "Uploading file…" : "Saving…"}
             </div>
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value as any)} className="mt-1 w-full border rounded-md p-2">
+          )}
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-[#264f5e] uppercase tracking-wide mb-1.5">Title</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)}
+                className="w-full rounded-xl border border-[#e8eef1] px-3 py-2.5 text-sm text-[#1a3340] placeholder:text-[#9bb5be] focus:outline-none focus:border-[#264f5e]/40 focus:ring-2 focus:ring-[#264f5e]/10"
+                placeholder="Resource title" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#264f5e] uppercase tracking-wide mb-1.5">Category</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value as any)}
+                className="w-full rounded-xl border border-[#e8eef1] px-3 py-2.5 text-sm text-[#1a3340] bg-white focus:outline-none focus:border-[#264f5e]/40 focus:ring-2 focus:ring-[#264f5e]/10">
                 <option value="document">Document</option>
                 <option value="video">Video</option>
               </select>
             </div>
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium">Assign to Client</label>
-              <select value={clientUserId} onChange={(e) => setClientUserId(e.target.value)} className="mt-1 w-full border rounded-md p-2">
+            <div>
+              <label className="block text-xs font-semibold text-[#264f5e] uppercase tracking-wide mb-1.5">Assign to Client</label>
+              <select value={clientUserId} onChange={(e) => setClientUserId(e.target.value)}
+                className="w-full rounded-xl border border-[#e8eef1] px-3 py-2.5 text-sm text-[#1a3340] bg-white focus:outline-none focus:border-[#264f5e]/40 focus:ring-2 focus:ring-[#264f5e]/10">
                 <option value="">Select a client…</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>{c.label}</option>
-                ))}
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
-              <p className="text-xs text-gray-500 mt-1">Required. Resource will be visible only to the selected client.</p>
+              <p className="text-[11px] text-[#6b8a96] mt-1">Visible only to the selected client.</p>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium">Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full border rounded-md p-2" rows={3} />
+              <label className="block text-xs font-semibold text-[#264f5e] uppercase tracking-wide mb-1.5">Description</label>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
+                className="w-full rounded-xl border border-[#e8eef1] px-3 py-2.5 text-sm text-[#1a3340] placeholder:text-[#9bb5be] focus:outline-none focus:border-[#264f5e]/40 focus:ring-2 focus:ring-[#264f5e]/10 resize-none" />
             </div>
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium">File Upload</label>
-              <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="mt-1 w-full" />
-              <p className="text-xs text-gray-500 mt-1">PDF, DOCX, XLSX, or MP4 supported.</p>
+            <div>
+              <label className="block text-xs font-semibold text-[#264f5e] uppercase tracking-wide mb-1.5">File Upload</label>
+              <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="w-full rounded-xl border border-[#e8eef1] px-3 py-2.5 text-sm text-[#1a3340] file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-[#264f5e]/10 file:text-[#264f5e] file:text-xs file:font-semibold hover:file:bg-[#264f5e]/20" />
+              <p className="text-[11px] text-[#6b8a96] mt-1">PDF, DOCX, XLSX, or MP4</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#264f5e] uppercase tracking-wide mb-1.5">External URL (optional)</label>
+              <input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)}
+                className="w-full rounded-xl border border-[#e8eef1] px-3 py-2.5 text-sm text-[#1a3340] placeholder:text-[#9bb5be] focus:outline-none focus:border-[#264f5e]/40 focus:ring-2 focus:ring-[#264f5e]/10"
+                placeholder="https://…" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium">External URL (optional)</label>
-              <input value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} className="mt-1 w-full border rounded-md p-2" placeholder="https://..." />
-              <p className="text-xs text-gray-500 mt-1">Provide a URL instead of a file (e.g., video link). If both are provided, the file upload will be used.</p>
-            </div>
-            <div className="md:col-span-2 flex items-center gap-3">
-              <button disabled={submitting} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50">
-                {"Upload Resource"}
+              <button disabled={submitting}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#264f5e] text-white text-sm font-semibold hover:bg-[#1f3f4c] transition-colors disabled:opacity-50 shadow-sm">
+                {submitting
+                  ? <><span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
+                  : "Upload Resource"}
               </button>
             </div>
           </form>
-        </section>
+        </div>
+      </section>
 
-        <section className="rounded-lg border p-6">
-          <h3 className="font-semibold mb-3">Existing Resources</h3>
+      {/* Resources list */}
+      <section className="rounded-2xl border border-[#e8eef1] bg-white shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#e8eef1]">
+          <h2 className="text-sm font-semibold text-[#1a3340]">Existing Resources</h2>
+        </div>
+        <div className="p-4">
           {loading ? (
-            null
+            <div className="space-y-3">
+              {[1,2,3].map(i => (
+                <div key={i} className="rounded-xl border border-[#e8eef1] p-4 animate-pulse flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="h-4 w-40 bg-gray-100 rounded-lg" />
+                    <div className="h-3 w-24 bg-gray-50 rounded-full" />
+                  </div>
+                  <div className="h-7 w-20 bg-gray-100 rounded-lg" />
+                </div>
+              ))}
+            </div>
           ) : resources.length === 0 ? (
-            <div className="text-sm text-gray-600">No resources uploaded yet.</div>
+            <div className="text-center py-10 text-[#6b8a96] text-sm">No resources uploaded yet.</div>
           ) : (
             <ul className="space-y-2">
               {resources.map((r) => (
-                <li key={r.id} className="flex items-center justify-between border rounded-md p-3">
+                <li key={r.id} className="flex items-center justify-between rounded-xl border border-[#e8eef1] bg-[#f6f9fb] px-4 py-3 hover:border-[#264f5e]/20 transition-colors">
                   <div>
-                    <div className="font-medium">{r.title}</div>
-                    <div className="text-xs text-gray-600">{r.category || "uncategorized"}</div>
-                    {r.client_user_id && (
-                      <div className="text-xs text-gray-500">Client: {clients.find((c) => c.id === (r as any).client_user_id)?.label || (r as any).client_user_id}</div>
-                    )}
-                    {r.created_at && (
-                      <div className="text-xs text-gray-500">Uploaded: {formatDateTime(r.created_at)}</div>
-                    )}
+                    <p className="text-sm font-semibold text-[#1a3340]">{r.title}</p>
+                    <p className="text-xs text-[#6b8a96] mt-0.5">
+                      {r.category || "uncategorized"}
+                      {r.client_user_id && ` · ${clients.find((c) => c.id === (r as any).client_user_id)?.label || (r as any).client_user_id}`}
+                    </p>
+                    {r.created_at && <p className="text-[11px] text-[#9bb5be] mt-0.5">{formatDateTime(r.created_at)}</p>}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     {r.file_url && (
-                      <a href={r.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Open</a>
+                      <a href={r.file_url} target="_blank" rel="noopener noreferrer"
+                        className="px-3 py-1.5 text-xs rounded-lg bg-[#264f5e]/10 text-[#264f5e] font-medium hover:bg-[#264f5e]/20 transition-colors">Open</a>
                     )}
-                    <button onClick={() => handleDelete(r.id)} className="text-red-600 hover:underline">Delete</button>
+                    <button onClick={() => handleDelete(r.id)}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-red-50 text-red-500 border border-red-200 font-medium hover:bg-red-100 transition-colors">Delete</button>
                   </div>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </div>
+      </section>
 
-        <Dialog open={!!confirmId} onOpenChange={(open) => !open && !deleting && setConfirmId(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Delete Resource</DialogTitle>
-              <DialogDescription>
-                This action permanently deletes the resource. If a file was uploaded, it will also be removed from storage.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <button
-                className="px-4 py-2 rounded-md border"
-                onClick={() => setConfirmId(null)}
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 rounded-md bg-red-600 text-white disabled:opacity-50 inline-flex items-center gap-2"
-                onClick={confirmDelete}
-                disabled={deleting}
-              >
-                {"Delete"}
-              </button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <Dialog open={!!confirmId} onOpenChange={(open) => !open && !deleting && setConfirmId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Resource</DialogTitle>
+            <DialogDescription>This action permanently deletes the resource and its file from storage.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button className="px-4 py-2 rounded-xl border border-[#e8eef1] text-sm font-medium text-[#264f5e] hover:bg-gray-50"
+              onClick={() => setConfirmId(null)} disabled={deleting}>Cancel</button>
+            <button className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-medium disabled:opacity-50 hover:bg-red-600 transition-colors inline-flex items-center gap-2"
+              onClick={confirmDelete} disabled={deleting}>
+              {deleting ? <><span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Deleting…</> : "Delete"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,120 +1,207 @@
 import { getUserAndProfile } from "@/lib/supabase-server";
 import AdminUsersTable from "@/components/admin-users-table";
-import LogoutButton from "@/components/logout-button";
 import Link from "next/link";
+import {
+  Users,
+  BookOpen,
+  FileText,
+  FolderOpen,
+  Upload,
+  HelpCircle,
+  TrendingUp,
+  Shield,
+  Activity,
+} from "lucide-react";
+
 export const dynamic = "force-dynamic";
+
+const quickActions = [
+  {
+    label: "Users & Roles",
+    desc: "Manage accounts & permissions",
+    href: "/admin/users",
+    icon: Users,
+    color: "bg-[#264f5e]/10 text-[#264f5e]",
+  },
+  {
+    label: "Resource Library",
+    desc: "Upload & organise resources",
+    href: "/admin/resources",
+    icon: BookOpen,
+    color: "bg-violet-50 text-violet-600",
+  },
+  {
+    label: "Contracts",
+    desc: "Review & send agreements",
+    href: "/admin/contracts",
+    icon: FileText,
+    color: "bg-amber-50 text-amber-600",
+  },
+  {
+    label: "Client Documents",
+    desc: "WorkDrive documents & files",
+    href: "/admin/client-documents",
+    icon: FolderOpen,
+    color: "bg-sky-50 text-sky-600",
+  },
+  {
+    label: "Client Uploads",
+    desc: "Browse client manual uploads",
+    href: "/admin/client-uploads",
+    icon: Upload,
+    color: "bg-emerald-50 text-emerald-600",
+  },
+  {
+    label: "Support Tickets",
+    desc: "Respond to client queries",
+    href: "/admin/support",
+    icon: HelpCircle,
+    color: "bg-rose-50 text-rose-500",
+  },
+];
 
 export default async function AdminPage() {
   const { user, profile } = await getUserAndProfile();
-
   const name = profile?.full_name || user?.email?.split("@")[0] || "Admin";
+  const initials = name
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="p-6 lg:p-8 space-y-8 max-w-6xl mx-auto">
+
+      {/* Page header */}
+      <header>
+        <p className="text-xs font-semibold tracking-widest text-[#264f5e]/60 uppercase mb-1">
+          Admin Portal
+        </p>
+        <h1 className="text-2xl font-semibold text-[#1a3340] tracking-tight">
+          Dashboard
+        </h1>
+        <p className="text-sm text-[#6b8a96] mt-1">
+          Overview of your organisation's activity
+        </p>
+      </header>
+
+      {/* Welcome card */}
+      <section
+        className="relative rounded-2xl overflow-hidden border border-[#264f5e]/15 bg-white p-6 shadow-sm"
+        style={{
+          background:
+            "linear-gradient(135deg, #264f5e08 0%, #ffffff 60%, #f0f7f9 100%)",
+        }}
+      >
+        <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-[#264f5e]/5 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <div className="shrink-0 h-12 w-12 rounded-2xl bg-[#264f5e] flex items-center justify-center text-white font-semibold text-base shadow-md shadow-[#264f5e]/30">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-lg font-semibold text-[#1a3340]">
+              Welcome back, {name}
+            </p>
+            <p className="text-sm text-[#6b8a96] mt-0.5">
+              Use this panel to manage users, resources, contracts and more.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#264f5e]/10 text-[10px] font-semibold text-[#264f5e] tracking-wide uppercase">
+                <Shield size={10} />
+                {profile?.role || "Admin"}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-[10px] font-semibold text-emerald-600 tracking-wide uppercase">
+                <Activity size={10} />
+                Active
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick actions grid */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a3340] mb-4 flex items-center gap-2">
+          <TrendingUp size={15} className="text-[#264f5e]" />
+          Quick Actions
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="group flex items-start gap-4 rounded-2xl border border-[#e8eef1] bg-white p-4 hover:border-[#264f5e]/30 hover:shadow-md hover:shadow-[#264f5e]/8 transition-all duration-200"
+              >
+                <div
+                  className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center ${action.color} transition-transform duration-200 group-hover:scale-110`}
+                >
+                  <Icon size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#1a3340] group-hover:text-[#264f5e] transition-colors">
+                    {action.label}
+                  </p>
+                  <p className="text-xs text-[#6b8a96] mt-0.5 leading-snug">
+                    {action.desc}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* System info */}
+      <section className="rounded-2xl border border-[#e8eef1] bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a3340] mb-4">
+          Session Info
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1 rounded-xl bg-[#f6f9fb] border border-[#e8eef1] px-4 py-3">
+            <span className="text-[11px] text-[#6b8a96] font-medium uppercase tracking-wide">Role</span>
+            <span className="text-sm font-semibold text-[#1a3340] capitalize">
+              {profile?.role || "—"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-xl bg-[#f6f9fb] border border-[#e8eef1] px-4 py-3">
+            <span className="text-[11px] text-[#6b8a96] font-medium uppercase tracking-wide">Email</span>
+            <span className="text-sm font-semibold text-[#1a3340] truncate">{user?.email || "—"}</span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-xl bg-[#f6f9fb] border border-[#e8eef1] px-4 py-3">
+            <span className="text-[11px] text-[#6b8a96] font-medium uppercase tracking-wide">Status</span>
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Active
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Users table */}
+      <section className="rounded-2xl border border-[#e8eef1] bg-white shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e8eef1]">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Admin Panel</h1>
-            <p className="text-gray-600 text-sm mt-1">Manage your organization's resources and users</p>
+            <h2 className="text-sm font-semibold text-[#1a3340]">User Management</h2>
+            <p className="text-xs text-[#6b8a96] mt-0.5">
+              All registered accounts in your organisation
+            </p>
           </div>
-          <LogoutButton />
-        </header>
-
-        <section className="rounded-lg border p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <h2 className="text-lg sm:text-xl font-semibold">Welcome back, {name}</h2>
-          <p className="text-gray-600 mt-2 text-sm sm:text-base">
-            Use this panel to manage users, resources, and contracts efficiently.
-          </p>
-        </section>
-
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <div className="rounded-lg border p-4 sm:p-6 hover:shadow-md transition-shadow">
-            <h3 className="font-semibold text-lg mb-4 flex items-center">
-              <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
-              Quick Actions
-            </h3>
-            <div className="grid grid-cols-1 gap-3">
-              <Link 
-                href="/admin/users" 
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
-              >
-                <span className="text-gray-900 font-medium">Users & Roles</span>
-                <span className="text-blue-600 group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
-              <Link 
-                href="/admin/resources" 
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
-              >
-                <span className="text-gray-900 font-medium">Resource Library</span>
-                <span className="text-blue-600 group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
-              <Link 
-                href="/admin/contracts" 
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
-              >
-                <span className="text-gray-900 font-medium">Contracts & Agreements</span>
-                <span className="text-blue-600 group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
-              <Link 
-                href="/admin/client-documents" 
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
-              >
-                <span className="text-gray-900 font-medium">Client Documents</span>
-                <span className="text-blue-600 group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
-              <Link 
-                href="/admin/support" 
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
-              >
-                <span className="text-gray-900 font-medium">Support Tickets</span>
-                <span className="text-blue-600 group-hover:translate-x-1 transition-transform">→</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-lg border p-4 sm:p-6 hover:shadow-md transition-shadow">
-            <h3 className="font-semibold text-lg mb-4 flex items-center">
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
-              System Information
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
-                <span className="text-gray-600">Your Role</span>
-                <span className="font-medium text-gray-900 capitalize">{profile?.role || "unknown"}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
-                <span className="text-gray-600">User ID</span>
-                <span className="font-mono text-xs text-gray-700 truncate max-w-32">{user?.id}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 rounded-lg bg-gray-50">
-                <span className="text-gray-600">Status</span>
-                <span className="flex items-center">
-                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                  <span className="text-green-700 font-medium">Active</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-lg border p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div>
-              <h3 className="font-semibold text-lg">User Management</h3>
-              <p className="text-sm text-gray-600 mt-1">View and manage all user accounts in your organization</p>
-            </div>
-            <Link 
-              href="/admin/users" 
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              Manage Users
-            </Link>
-          </div>
-          <div className="overflow-hidden">
-            <AdminUsersTable />
-          </div>
-        </section>
-      </div>
+          <Link
+            href="/admin/users"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#264f5e] text-white text-xs font-semibold hover:bg-[#1f3f4c] transition-colors shadow-sm"
+          >
+            <Users size={13} />
+            Manage Users
+          </Link>
+        </div>
+        <div className="p-4">
+          <AdminUsersTable />
+        </div>
+      </section>
     </div>
   );
 }

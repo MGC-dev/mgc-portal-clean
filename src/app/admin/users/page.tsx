@@ -1,41 +1,54 @@
 import { getUserAndProfile, requireAdmin } from "@/lib/supabase-server";
 import AdminUsersTable from "@/components/admin-users-table";
-import Link from "next/link";
+import { Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
   const { user, profile } = await getUserAndProfile();
   const isAdmin = await requireAdmin();
+
   if (!user || !isAdmin) {
     return (
-      <div className="min-h-screen bg-white text-gray-900 p-8">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-xl font-semibold">Unauthorized</h1>
-          <p className="mt-2">You must be an admin to view this page.</p>
+      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
+          <p className="text-sm font-semibold text-red-600">Unauthorized</p>
+          <p className="text-xs text-red-400 mt-1">You must be an admin to view this page.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Admin • Users & Roles</h1>
-            <p className="text-gray-600 mt-2">Manage user accounts: suspend, unsuspend, or delete users.</p>
+    <div className="p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
+      {/* Page header */}
+      <header>
+        <p className="text-xs font-semibold tracking-widest text-[#264f5e]/60 uppercase mb-1">
+          Admin Portal
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-[#264f5e]/10 flex items-center justify-center">
+            <Users size={18} className="text-[#264f5e]" />
           </div>
-          <Link href="/admin" className="text-blue-600 hover:underline">
-            Back to Admin
-          </Link>
-        </header>
+          <div>
+            <h1 className="text-2xl font-semibold text-[#1a3340] tracking-tight">Users & Roles</h1>
+            <p className="text-sm text-[#6b8a96]">Manage accounts — suspend, unsuspend, or remove users</p>
+          </div>
+        </div>
+      </header>
 
-        <section className="rounded-lg border p-6">
-          <h2 className="text-xl font-semibold mb-4">User Management</h2>
+      {/* Table card */}
+      <section className="rounded-2xl border border-[#e8eef1] bg-white shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e8eef1]">
+          <div>
+            <h2 className="text-sm font-semibold text-[#1a3340]">All Users</h2>
+            <p className="text-xs text-[#6b8a96] mt-0.5">Every registered account in your organisation</p>
+          </div>
+        </div>
+        <div className="p-4">
           <AdminUsersTable />
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
