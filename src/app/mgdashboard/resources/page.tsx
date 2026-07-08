@@ -30,7 +30,10 @@ export default function ResourceLibraryPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/resources", { headers: { accept: "application/json" } });
+        const res = await fetch("/api/resources", { 
+          headers: { accept: "application/json" },
+          credentials: "include"
+        });
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || "Failed to load resources");
         setResources((json?.resources || []) as Resource[]);

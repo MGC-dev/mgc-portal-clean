@@ -93,6 +93,7 @@ export default function AdminContractsPage() {
         setContractsError(null);
         const res = await fetch('/api/admin/contracts', {
           headers: { accept: "application/json" },
+          credentials: "include"
         });
         const json = await parseJsonOrThrow(res);
         setContracts(json.contracts || []);

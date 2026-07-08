@@ -135,7 +135,7 @@ export default function AdminClientDocumentsPage() {
       let url = `/api/admin/workdrive/files?email=${encodeURIComponent(email)}`;
       if (folderId) url += `&folderId=${encodeURIComponent(folderId)}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: "include" });
       const data = await res.json();
 
       if (res.ok) {
