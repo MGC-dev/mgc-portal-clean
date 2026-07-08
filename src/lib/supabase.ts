@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { supabaseCookieOptions } from "@/lib/supabase-cookies";
 
 export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,6 +18,7 @@ export function createClient() {
       detectSessionInUrl: true,
       flowType: 'pkce'
     },
+    cookieOptions: supabaseCookieOptions,
     global: {
       headers: {
         'X-Client-Info': 'mgc-cpm-web'
