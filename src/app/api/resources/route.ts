@@ -6,8 +6,16 @@ export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+  
   if (!user) {
+    const { cookies: nextCookies } = await import("next/headers");
+    const cookieStore = await nextCookies();
+    console.error("[/api/resources] Unauthorized. authError:", authError);
+    console.error("[/api/resources] Request URL:", request.url);
+    console.error("[/api/resources] Request headers 'cookie':", request.headers.get("cookie"));
+    console.error("[/api/resources] cookies().getAll():", cookieStore.getAll());
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
