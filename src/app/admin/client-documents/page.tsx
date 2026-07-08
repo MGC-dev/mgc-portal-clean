@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase";
 import {
   Folder,
   FileText,
@@ -97,13 +98,30 @@ export default function AdminClientDocumentsPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  async function getAuthHeaders(headers: HeadersInit = {}) {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    return {
+      ...headers,
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    };
+  }
+
   useEffect(() => {
     fetchUsers();
   }, []);
 
   async function fetchUsers() {
     try {
-      const res = await fetch("/api/admin/users?perPage=1000");
+      const res = await fetch("/api/admin/users?perPage=1000", {
+        credentials: "include",
+        headers: await getAuthHeaders({ accept: "application/json" }),
+      });
       const data = await res.json();
       if (res.ok && data.users) setUsers(data.users);
     } catch (e) {
@@ -135,7 +153,10 @@ export default function AdminClientDocumentsPage() {
       let url = `/api/admin/workdrive/files?email=${encodeURIComponent(email)}`;
       if (folderId) url += `&folderId=${encodeURIComponent(folderId)}`;
 
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: await getAuthHeaders({ accept: "application/json" }),
+      });
       const data = await res.json();
 
       if (res.ok) {
@@ -183,7 +204,8 @@ export default function AdminClientDocumentsPage() {
     try {
       const res = await fetch("/api/admin/workdrive/folders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: await getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           parentFolderId: masterFolderId,
           folderName,
@@ -211,7 +233,8 @@ export default function AdminClientDocumentsPage() {
     try {
       const res = await fetch("/api/admin/workdrive/folders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: await getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ parentFolderId: currentFolderId, folderName: newFolderName.trim() }),
       });
       if (res.ok) {
@@ -237,7 +260,12 @@ export default function AdminClientDocumentsPage() {
     formData.append("file", file);
     formData.append("folderId", currentFolderId);
     try {
-      const res = await fetch("/api/admin/workdrive/files/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/admin/workdrive/files/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: await getAuthHeaders(),
+        body: formData,
+      });
       if (res.ok) {
         await loadWorkDrive(selectedUser!.email, currentFolderId);
       } else {

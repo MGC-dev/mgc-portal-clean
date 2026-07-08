@@ -4,7 +4,7 @@ import { getWorkDriveFileStream } from "@/lib/zoho-workdrive";
 
 export async function GET(req: NextRequest) {
   try {
-    if (!(await requireAdmin())) {
+    if (!(await requireAdmin(req))) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 

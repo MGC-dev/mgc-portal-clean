@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase-server";
+import { createAdminSupabaseClient, requireAdmin } from "@/lib/supabase-server";
 
 export async function GET(request: Request) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     let admin;
     try {
       admin = createAdminSupabaseClient();

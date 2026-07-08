@@ -51,7 +51,28 @@ export const createAdminSupabaseClient = () => {
 };
 
 // Helpers: get current user and profile (server-side)
-export async function getUserAndProfile() {
+export async function getUserAndProfile(request?: Request) {
+  const authHeader = request?.headers.get("authorization");
+  const bearerToken = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+
+  if (bearerToken) {
+    const admin = createAdminSupabaseClient();
+    const {
+      data: { user },
+    } = await admin.auth.getUser(bearerToken);
+
+    if (!user) return { user: null, profile: null };
+
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("*")
+      .or(`id.eq.${user.id},email.eq.${user.email}`)
+      .limit(1)
+      .maybeSingle();
+
+    return { user, profile };
+  }
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -62,20 +83,23 @@ export async function getUserAndProfile() {
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
-    .single();
+    .or(`id.eq.${user.id},email.eq.${user.email}`)
+    .limit(1)
+    .maybeSingle();
 
   return { user, profile };
 }
 
-export async function isAdmin() {
-  const { user, profile } = await getUserAndProfile();
+export async function isAdmin(request?: Request) {
+  const { user, profile } = await getUserAndProfile(request);
   if (!user) return false;
   // Prefer profile.role, fallback to role_assignments
   if (profile?.role && ["admin", "super_admin"].includes(profile.role)) {
     return true;
   }
-  const supabase = await createServerSupabaseClient();
+  const supabase = request?.headers.get("authorization")
+    ? createAdminSupabaseClient()
+    : await createServerSupabaseClient();
   const { data } = await supabase
     .from("role_assignments")
     .select("role")
@@ -84,6 +108,6 @@ export async function isAdmin() {
   return Array.isArray(data) && data.length > 0;
 }
 
-export async function requireAdmin() {
-  return (await isAdmin()) === true;
+export async function requireAdmin(request?: Request) {
+  return (await isAdmin(request)) === true;
 }

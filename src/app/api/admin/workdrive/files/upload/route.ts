@@ -4,7 +4,7 @@ import { uploadFileToWorkDrive } from "@/lib/zoho-workdrive";
 
 export async function POST(request: Request) {
   try {
-    if (!(await requireAdmin())) {
+    if (!(await requireAdmin(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
