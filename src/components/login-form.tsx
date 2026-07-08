@@ -71,6 +71,24 @@ export function LoginForm() {
 
       if (!res) return null;
 
+      // Check content-type before parsing — if the server returns HTML (e.g., a
+      // Next.js error page or Vercel 500), res.json() would throw with the
+      // confusing "Unexpected token '<'" message. We detect it early and surface
+      // a helpful error instead.
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        const rawText = await res.text().catch(() => "");
+        console.error(`[login] API returned non-JSON (${res.status}). Content-Type: ${contentType}`);
+        console.error(`[login] Raw response (first 500 chars):`, rawText.slice(0, 500));
+        return {
+          data: {},
+          error: {
+            message: `Service unavailable (HTTP ${res.status}). Please try again or contact support if this persists.`,
+            status: res.status,
+          },
+        };
+      }
+
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         return { data: {}, error: { message: json?.error || "Authentication failed", status: res.status } };
