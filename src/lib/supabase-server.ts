@@ -11,14 +11,21 @@ export const createServerSupabaseClient = async () => {
   }
   return createServerClient(url, anon, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
+      // Use getAll/setAll — @supabase/ssr chunks large JWTs across multiple
+      // cookies (e.g. sb-xxx-auth-token.0, .1 …). A single `get(name)` call
+      // cannot reassemble them, causing getUser() to always return null.
+      getAll() {
+        return cookieStore.getAll();
       },
-      set(name: string, value: string, options: any) {
-        cookieStore.set({ name, value, ...options });
-      },
-      remove(name: string, options: any) {
-        cookieStore.set({ name, value: "", ...options });
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        } catch {
+          // setAll is called from Server Components where cookies are read-only.
+          // Safe to ignore — the middleware will handle refreshing the session.
+        }
       },
     },
   });
