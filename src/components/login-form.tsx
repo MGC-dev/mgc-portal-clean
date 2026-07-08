@@ -34,78 +34,6 @@ export function LoginForm() {
     }
   }, []);
 
-  const withTimeout = async <T,>(p: Promise<T>, ms = 15000): Promise<T | null> => {
-    return new Promise<T | null>((resolve) => {
-      const timer = setTimeout(() => resolve(null), ms);
-      p.then((val) => {
-        clearTimeout(timer);
-        resolve(val);
-      }).catch((err) => {
-        clearTimeout(timer);
-        console.error("Auth request failed:", err);
-        resolve(null);
-      });
-    });
-  };
-
-  const attemptSignIn = async (email: string, password: string, retryCount = 0): Promise<any> => {
-    const maxRetries = 2;
-
-    try {
-      console.log(`Sign-in attempt ${retryCount + 1}/${maxRetries + 1} via server API`);
-
-      const res = await withTimeout(
-        fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "content-type": "application/json", accept: "application/json" },
-          body: JSON.stringify({ email, password }),
-        }),
-        12000
-      );
-
-      if (!res && retryCount < maxRetries) {
-        console.log(`Attempt ${retryCount + 1} timed out, retrying...`);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return attemptSignIn(email, password, retryCount + 1);
-      }
-
-      if (!res) return null;
-
-      // Check content-type before parsing — if the server returns HTML (e.g., a
-      // Next.js error page or Vercel 500), res.json() would throw with the
-      // confusing "Unexpected token '<'" message. We detect it early and surface
-      // a helpful error instead.
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        const rawText = await res.text().catch(() => "");
-        console.error(`[login] API returned non-JSON (${res.status}). Content-Type: ${contentType}`);
-        console.error(`[login] Raw response (first 500 chars):`, rawText.slice(0, 500));
-        return {
-          data: {},
-          error: {
-            message: `Service unavailable (HTTP ${res.status}). Please try again or contact support if this persists.`,
-            status: res.status,
-          },
-        };
-      }
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        return { data: {}, error: { message: json?.error || "Authentication failed", status: res.status } };
-      }
-
-      return { data: { user: json?.user || null }, error: null };
-    } catch (error) {
-      console.error(`Sign-in attempt ${retryCount + 1} failed:`, error);
-      if (retryCount < maxRetries) {
-        console.log(`Retrying after error...`);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return attemptSignIn(email, password, retryCount + 1);
-      }
-      throw error;
-    }
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setLoginData((prev) => ({
@@ -136,60 +64,39 @@ export function LoginForm() {
         return;
       }
 
-      console.log("Starting authentication with retry logic...");
-      const result = await attemptSignIn(loginData.email, loginData.password);
+      const { data, error: authError } = await supabaseClient.auth.signInWithPassword({
+        email: loginData.email,
+        password: loginData.password,
+      });
 
-      if (!result) {
-        setError(
-          "Authentication failed after multiple attempts. This may indicate a network issue or service problem. Please try again in a few minutes or contact support if the issue persists."
-        );
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = result;
-
-      if (error) {
-        console.error("Supabase auth error:", error);
-        const msg = (error.message || "").toLowerCase();
-        const status = (error as any)?.status ?? 0;
-
-        // Immediate banned/suspended detection regardless of status shape
-        const isBanned = msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked");
-        if (isBanned) {
+      if (authError) {
+        console.error("Supabase auth error:", authError);
+        const msg = authError.message.toLowerCase();
+        
+        if (msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked")) {
           router.replace("/suspended");
           return;
         }
 
-        // Handle specific error cases
-        if (status === 400 && msg.includes("invalid")) {
+        if (msg.includes("invalid login credentials")) {
           setError("Invalid email or password. Please check your credentials and try again.");
-        } else if (status === 422 && msg.includes("email")) {
-          setError("Please enter a valid email address.");
-        } else if (status === 429) {
+        } else if (msg.includes("rate limit")) {
           setError("Too many login attempts. Please wait a few minutes before trying again.");
-        } else if (status === 403) {
-          setError("Access denied. Please contact support if this persists.");
-        } else if (status >= 500) {
-          setError("Server error occurred. Please try again.");
-        } else if (msg.includes("network") || msg.includes("timeout") || msg.includes("connection")) {
-          setError("Network connection issue detected. Please check your internet connection and try again.");
         } else {
-          setError(error.message || "Authentication failed. Please try again.");
+          setError(authError.message || "Authentication failed. Please try again.");
         }
         setLoading(false);
         return;
       }
 
-      if (data.user) {
-        console.log("Login successful, establishing session...");
+      if (data.session) {
+        console.log("Login successful, session established.");
         setLoginData({ email: "", password: "" });
-        // Keep overlay active until navigation/unmount
-        window.location.href = "/mgdashboard";
+        router.push("/mgdashboard");
+        router.refresh();
         return;
       }
 
-      // If we get here, something unexpected happened
       setError("Login failed unexpectedly. Please try again or contact support.");
       setLoading(false);
     } catch (err) {
@@ -198,8 +105,6 @@ export function LoginForm() {
       setLoading(false);
     }
   };
-
-  // Diagnostics removed
 
   if (clientError) {
     return (
