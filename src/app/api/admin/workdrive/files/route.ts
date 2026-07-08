@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/supabase-server";
 import { getClientFolderIdFromBigin, listWorkDriveFolder } from "@/lib/zoho-workdrive";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     if (!(await requireAdmin())) {

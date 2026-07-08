@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   // Require authenticated user; return only resources for that client unless admin.
   const supabase = await createServerSupabaseClient();
