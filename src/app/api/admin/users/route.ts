@@ -3,6 +3,7 @@ import { createAdminSupabaseClient, requireAdmin } from "@/lib/supabase-server";
 
 export async function GET(request: Request) {
   try {
+    console.log("[admin/users] url:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     if (!(await requireAdmin(request))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

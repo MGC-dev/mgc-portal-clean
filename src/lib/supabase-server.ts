@@ -31,7 +31,9 @@ export const createServerSupabaseClient = async () => {
       // Use getAll/setAll — @supabase/ssr chunks large JWTs across multiple
       // cookies (sb-xxx-auth-token.0, .1, …). getAll reassembles them.
       getAll() {
-        return cookieStore.getAll();
+        const all = cookieStore.getAll();
+        console.log("[cookies] names:", all.map(c => c.name));
+        return all;
       },
       setAll(cookiesToSet) {
         try {
