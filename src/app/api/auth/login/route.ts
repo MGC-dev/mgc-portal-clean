@@ -1,7 +1,25 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
+/**
+ * ORPHANED ROUTE — DO NOT USE FROM UI CODE
+ *
+ * Login must happen via the browser Supabase client (createClient() from
+ * @/lib/supabase) so the session refresh timer is owned by the browser.
+ * Signing in here gives the browser an ownerless session that expires with
+ * nothing to renew it, causing 401s on all /api/admin/* routes after ~1 hour.
+ *
+ * This route is believed to be unreachable from the current UI.
+ * A console.error is present to confirm this in Vercel logs before retirement.
+ * Once one full production login cycle shows no log line from here, delete it.
+ */
 export async function POST(req: Request) {
+  console.error(
+    "[ORPHANED LOGIN ROUTE] /api/auth/login was called — this should NOT happen. " +
+    "Login must use the browser Supabase client. Check for any fetch() or redirect " +
+    "pointing to this route and remove it immediately."
+  );
+
   try {
     const { email, password } = await req.json();
     if (!email || !password) {

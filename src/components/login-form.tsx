@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
 import { createClient } from "@/lib/supabase";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
 
@@ -19,7 +19,7 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [supabaseClient, setSupabaseClient] = useState<any>(null);
   const [clientError, setClientError] = useState<string>("");
-  const router = useRouter();
+
 
   useEffect(() => {
     try {
@@ -74,7 +74,7 @@ export function LoginForm() {
         const msg = authError.message.toLowerCase();
         
         if (msg.includes("ban") || msg.includes("suspend") || msg.includes("blocked")) {
-          router.replace("/suspended");
+          window.location.assign("/suspended");
           return;
         }
 
@@ -92,12 +92,12 @@ export function LoginForm() {
       if (data.session) {
         console.log("Login successful, session established.");
         setLoginData({ email: "", password: "" });
-        // Let the middleware handle role-based routing:
-        // admins → /admin, clients → /mgdashboard.
-        // Pushing to "/" triggers the middleware's redirect logic
-        // after the session cookie is fully committed.
-        router.push("/");
-        router.refresh();
+        // Hard navigation: forces a full HTTP request so the middleware
+        // reads the committed session cookie and redirects by role
+        // (admins → /admin, clients → /mgdashboard).
+        // router.push + router.refresh is soft navigation and can race
+        // the cookie write, causing the middleware to miss the session.
+        window.location.assign("/");
         return;
       }
 

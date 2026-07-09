@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard,
   Users,
@@ -64,6 +65,19 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      setSigningOut(true);
+      await signOut();
+    } catch {
+      // soft-fail; proceed to redirect
+    } finally {
+      window.location.href = "/auth/logout";
+    }
+  };
 
   const isActive = (item: (typeof navItems)[0]) => {
     if (item.exact) return pathname === item.href;
@@ -198,9 +212,10 @@ export default function AdminSidebar() {
           )}
         </button>
 
-        <Link
-          href="/auth/logout"
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[#6b8a96] hover:bg-red-50 hover:text-red-500 transition-all duration-200 ${
+        <button
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[#6b8a96] hover:bg-red-50 hover:text-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
             collapsed ? "justify-center" : ""
           }`}
           title={collapsed ? "Sign out" : undefined}
@@ -215,11 +230,11 @@ export default function AdminSidebar() {
                 transition={{ duration: 0.18 }}
                 className="text-sm font-medium whitespace-nowrap overflow-hidden"
               >
-                Sign Out
+                {signingOut ? "Signing out..." : "Sign Out"}
               </motion.span>
             )}
           </AnimatePresence>
-        </Link>
+        </button>
       </div>
     </div>
   );

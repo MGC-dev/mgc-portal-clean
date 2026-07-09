@@ -80,48 +80,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const getInitialSession = async () => {
+    const getInitialUser = async () => {
       try {
-        console.log("[v0] Getting initial session...");
-        const timed = withTimeout(supabase.auth.getSession(), 6000);
-        const result = await timed;
-        if (result === null) {
-          setLoading(false);
-          return;
-        }
-        const session = result?.data?.session ?? null;
-        const sessionError = (result as any)?.error ?? null;
+        console.log("[auth] Getting initial user...");
+        // getUser() validates the session server-side and reads the cookie.
+        // getSession() only reads the locally-cached JWT, which is absent when
+        // login was performed on a different tab/page or after a hard refresh
+        // before the client's in-memory state is repopulated.
+        const { data, error } = await supabase.auth.getUser();
 
-        if (sessionError) {
-          console.error("[v0] Session error:", sessionError);
-        }
-
-        console.log("[v0] Session:", session ? "Found" : "None");
-        if (session?.user) {
-          setUser(session.user);
+        if (error) {
+          // A getUser() error does NOT mean the user is signed out — it can be
+          // a transient network error. Do not clear state here; let
+          // onAuthStateChange carry the authoritative result.
+          console.warn("[auth] getUser error (non-fatal):", error.message);
         }
 
-        if (session?.user) {
-          console.log("[v0] Fetching profile for user:", session.user.id);
-          const profileData = await fetchProfile(session.user.id);
+        const u = data?.user ?? null;
+        console.log("[auth] Initial user:", u ? "Found" : "None");
+
+        if (u) {
+          setUser(u);
+          console.log("[auth] Fetching profile for user:", u.id);
+          const profileData = await fetchProfile(u.id);
           setProfile(profileData);
-          console.log(
-            "[v0] Profile loaded:",
-            profileData ? "Success" : "Failed"
-          );
+          console.log("[auth] Profile loaded:", profileData ? "Success" : "Failed");
         }
-      } catch (error) {
-        console.error("[v0] Error in getInitialSession:", error);
+      } catch (e) {
+        console.error("[auth] init error:", e);
       } finally {
-        console.log("[v0] Setting loading to false");
+        console.log("[auth] Setting loading to false");
         setLoading(false);
       }
     };
 
-    getInitialSession();
+    getInitialUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[v0] Auth state changed:", event);
+      console.log("[auth] Auth state changed:", event);
       if (session?.user) {
         setUser(session.user);
         const profileData = await fetchProfile(session.user.id);
@@ -136,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
+
 
   const signOut = async () => {
     // Request a global sign-out to ensure all tabs and cookies are cleared
