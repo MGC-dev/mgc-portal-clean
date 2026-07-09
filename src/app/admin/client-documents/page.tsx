@@ -184,11 +184,7 @@ export default function AdminClientDocumentsPage() {
 
   async function createRootFolder() {
     if (!selectedUser) return;
-    const masterFolderId = process.env.NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID;
-    if (!masterFolderId) {
-      alert("Master Folder ID not configured (NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID).");
-      return;
-    }
+    
     const folderName = selectedUser.profile?.full_name || selectedUser.email;
     setIsCreatingFolder(true);
     try {
@@ -196,7 +192,6 @@ export default function AdminClientDocumentsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          parentFolderId: masterFolderId,
           folderName,
           clientEmail: selectedUser.email,
           isRootClientFolder: true,

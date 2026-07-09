@@ -10,11 +10,20 @@ export async function POST(request: Request) {
 
     const { parentFolderId, folderName, clientEmail, isRootClientFolder } = await request.json();
 
-    if (!parentFolderId || !folderName) {
+    let targetParentFolderId = parentFolderId;
+
+    if (isRootClientFolder) {
+      targetParentFolderId = process.env.NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID;
+      if (!targetParentFolderId) {
+        return NextResponse.json({ error: "Server configuration missing: NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID is not set in environment." }, { status: 500 });
+      }
+    }
+
+    if (!targetParentFolderId || !folderName) {
       return NextResponse.json({ error: "Missing parentFolderId or folderName" }, { status: 400 });
     }
 
-    const newFolder = await createWorkDriveFolder(parentFolderId, folderName);
+    const newFolder = await createWorkDriveFolder(targetParentFolderId, folderName);
 
     if (isRootClientFolder && clientEmail) {
       const contactId = await getBiginContactIdByEmail(clientEmail);
