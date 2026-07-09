@@ -99,17 +99,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const u = data?.user ?? null;
         console.log("[auth] Initial user:", u ? "Found" : "None");
 
+        if (u) setUser(u);
+
+        // Resolve auth as soon as the user is known — DO NOT wait on the
+        // profile fetch. Every page gates on !authLoading; if this is
+        // deferred until after fetchProfile, a stalled profile query holds
+        // the gate shut and every page spins forever.
+        console.log("[auth] Setting loading to false");
+        setLoading(false);
+
+        // Fetch profile as a non-blocking follow-up.
         if (u) {
-          setUser(u);
           console.log("[auth] Fetching profile for user:", u.id);
-          const profileData = await fetchProfile(u.id);
-          setProfile(profileData);
-          console.log("[auth] Profile loaded:", profileData ? "Success" : "Failed");
+          const profileData = await withTimeout(fetchProfile(u.id), 4000);
+          setProfile(profileData ?? null);
+          console.log("[auth] Profile loaded:", profileData ? "Success" : "Failed/Timeout");
         }
       } catch (e) {
         console.error("[auth] init error:", e);
-      } finally {
-        console.log("[auth] Setting loading to false");
+        // Ensure loading always clears even on unexpected errors.
         setLoading(false);
       }
     };
@@ -120,14 +128,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[auth] Auth state changed:", event);
       if (session?.user) {
         setUser(session.user);
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
+        // Clear loading before the profile fetch — same reason as getInitialUser.
+        setLoading(false);
+        const profileData = await withTimeout(fetchProfile(session.user.id), 4000);
+        setProfile(profileData ?? null);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setProfile(null);
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();

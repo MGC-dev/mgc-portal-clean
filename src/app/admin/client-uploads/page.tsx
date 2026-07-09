@@ -107,6 +107,8 @@ export default function AdminClientUploadsPage() {
   useEffect(() => {
     if (!authLoading && user) {
       loadDocs();
+    } else if (!authLoading) {
+      setLoading(false);
     }
   }, [authLoading, user]);
 

@@ -73,6 +73,9 @@ export default function AdminResourcesPage() {
           setLoading(false);
         }
       })();
+    } else if (!authLoading) {
+      // Auth resolved but no user — clear spinner.
+      setLoading(false);
     }
   }, [authLoading, user]);
 

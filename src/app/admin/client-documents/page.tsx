@@ -103,6 +103,8 @@ export default function AdminClientDocumentsPage() {
   useEffect(() => {
     if (!authLoading && user) {
       fetchUsers();
+    } else if (!authLoading) {
+      setLoadingUsers(false);
     }
   }, [authLoading, user]);
 

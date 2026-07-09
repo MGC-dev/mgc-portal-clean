@@ -109,6 +109,9 @@ export default function AdminContractsPage() {
     if (!authLoading && user) {
       loadClients();
       loadContracts();
+    } else if (!authLoading) {
+      setClientsLoading(false);
+      setContractsLoading(false);
     }
   }, [authLoading, user]);
 

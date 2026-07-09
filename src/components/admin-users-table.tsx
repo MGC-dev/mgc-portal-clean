@@ -80,6 +80,10 @@ export default function AdminUsersTable() {
   useEffect(() => {
     if (!authLoading && user) {
       fetchUsers();
+    } else if (!authLoading) {
+      // Auth resolved but no user — clear the spinner so the component
+      // doesn't hang on its initial loading=true state.
+      setLoading(false);
     }
   }, [authLoading, user]);
 
