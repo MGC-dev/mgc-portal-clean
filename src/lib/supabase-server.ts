@@ -71,34 +71,9 @@ export const createAdminSupabaseClient = () => {
 // ---------------------------------------------------------------------------
 // getUserAndProfile
 //
-// Supports two auth strategies:
-//   1. Bearer token in Authorization header (sent by authedFetch on client)
-//   2. Session cookies (set by middleware on every request)
+// Reads from session cookies (refreshed by middleware)
 // ---------------------------------------------------------------------------
 export async function getUserAndProfile(request?: Request) {
-  const authHeader = request?.headers.get("authorization");
-  const bearerToken = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
-
-  if (bearerToken) {
-    // Validate the JWT directly using the admin client (no cookie lookup needed)
-    const admin = createAdminSupabaseClient();
-    const {
-      data: { user },
-    } = await admin.auth.getUser(bearerToken);
-
-    if (!user) return { user: null, profile: null };
-
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("*")
-      .or(`id.eq.${user.id},email.eq.${user.email}`)
-      .limit(1)
-      .maybeSingle();
-
-    return { user, profile };
-  }
-
-  // Fallback: read from session cookies (refreshed by middleware)
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -129,9 +104,7 @@ export async function isAdmin(request?: Request): Promise<boolean> {
   }
 
   // Fallback: role_assignments table
-  const supabase = request?.headers.get("authorization")
-    ? createAdminSupabaseClient()
-    : await createServerSupabaseClient();
+  const supabase = await createServerSupabaseClient();
 
   const { data } = await supabase
     .from("role_assignments")

@@ -4,11 +4,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createClient } from "@/lib/supabase";
+const supabase = createClient();
 
 type PlanType = "Monthly" | "Yearly";
 
