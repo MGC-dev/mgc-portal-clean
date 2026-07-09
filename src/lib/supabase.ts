@@ -16,7 +16,11 @@ export function createClient() {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce'
+      // Do NOT set flowType: 'pkce' — PKCE stores a code verifier in
+      // localStorage and exchanges it for a session via a redirect, which
+      // means cookies are NOT set immediately after signInWithPassword.
+      // The default flow writes the session directly into cookies so the
+      // server-side middleware and API routes can always read it.
     },
     cookieOptions: supabaseCookieOptions,
     global: {

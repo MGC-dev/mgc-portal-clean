@@ -7,5 +7,8 @@ export const supabaseCookieOptions: CookieOptionsWithName = {
   // string breaks that chunking, causing getUser() to always return null.
   path: "/",
   sameSite: "lax",
+  // Mark cookies as secure on HTTPS (production). Without this, some
+  // browsers may refuse to store or send cookies on HTTPS origins.
+  secure: process.env.NODE_ENV === "production",
   maxAge: 31536000,
 };
