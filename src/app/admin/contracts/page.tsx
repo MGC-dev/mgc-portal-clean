@@ -297,7 +297,7 @@ export default function AdminContractsPage() {
           <p className="text-xs text-[#6b8a96] mt-0.5">Upload a PDF and assign it to a client. They'll see it in their dashboard.</p>
         </div>
         <div className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[#264f5e] uppercase tracking-wide mb-1.5">Client</label>
