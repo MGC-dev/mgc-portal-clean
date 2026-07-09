@@ -369,3 +369,34 @@ export async function uploadFileToWorkDrive(parentFolderId: string, fileName: st
   const data = JSON.parse(text);
   return data.data; // Returns file metadata
 }
+
+/**
+ * Delete (move to trash) multiple files/folders in WorkDrive
+ */
+export async function deleteWorkDriveItems(itemIds: string[]) {
+  if (!itemIds || itemIds.length === 0) return;
+  const token = await getWorkDriveAccessToken();
+
+  const res = await fetch(`${ZOHO_WORKDRIVE_BASE}/files`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+      "Content-Type": "application/vnd.api+json",
+      Accept: "application/vnd.api+json",
+    },
+    body: JSON.stringify({
+      data: itemIds.map((id) => ({
+        id,
+        type: "files",
+        attributes: {
+          status: "51", // 51 = trash
+        },
+      })),
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to delete WorkDrive items: ${res.status} - ${text}`);
+  }
+}

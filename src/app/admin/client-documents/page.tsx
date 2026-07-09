@@ -18,6 +18,7 @@ import {
   Download,
   Eye,
   FolderPlus,
+  Trash2,
 } from "lucide-react";
 
 type User = {
@@ -100,6 +101,9 @@ export default function AdminClientDocumentsPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     if (!authLoading && user) {
       fetchUsers();
@@ -128,12 +132,14 @@ export default function AdminClientDocumentsPage() {
       setPreviewItem(null);
       setPreviewUrl(null);
       setItemsError(null);
+      setSelectedItems([]);
       loadWorkDrive(selectedUser.email, null);
     } else {
       setItems([]);
       setItemsError(null);
       setRootFolderId(null);
       setCurrentFolderId(null);
+      setSelectedItems([]);
     }
   }, [selectedUser]);
 
@@ -151,6 +157,7 @@ export default function AdminClientDocumentsPage() {
 
       if (res.ok) {
         setItems(data.files || []);
+        setSelectedItems([]);
         if (!folderId) {
           setRootFolderId(data.rootFolderId);
           setCurrentFolderId(data.rootFolderId);
@@ -180,6 +187,34 @@ export default function AdminClientDocumentsPage() {
   function closePreview() {
     setPreviewItem(null);
     setPreviewUrl(null);
+  }
+
+  async function handleMassDelete() {
+    if (selectedItems.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedItems.length} item(s)?`)) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await authedFetch("/api/admin/workdrive/files/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemIds: selectedItems }),
+      });
+      if (res.ok) {
+        setSelectedItems([]);
+        if (selectedUser) {
+          await loadWorkDrive(selectedUser.email, currentFolderId);
+        }
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete items");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred while deleting.");
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   async function createRootFolder() {
@@ -430,6 +465,24 @@ export default function AdminClientDocumentsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
+                    {selectedItems.length > 0 && (
+                      <>
+                        <button
+                          onClick={handleMassDelete}
+                          disabled={isDeleting}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
+                        >
+                          {isDeleting ? (
+                            <span className="h-4 w-4 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                          Delete Selected ({selectedItems.length})
+                        </button>
+                        <div className="w-px h-5 bg-[#e8eef1] mx-1" />
+                      </>
+                    )}
+
                     <button
                       onClick={() => loadWorkDrive(selectedUser.email, currentFolderId)}
                       className="p-2 text-[#6b8a96] hover:text-[#264f5e] hover:bg-[#264f5e]/10 rounded-xl transition-colors"
@@ -516,8 +569,22 @@ export default function AdminClientDocumentsPage() {
                   ) : (
                     <div className="bg-white rounded-xl border border-[#e8eef1] overflow-hidden">
                       {/* Table Header */}
-                      <div className="grid grid-cols-[1fr_120px_120px_48px] items-center px-6 py-3 border-b border-[#e8eef1] bg-[#fcfdfe]">
-                        <span className="text-[11px] font-bold text-[#6b8a96] uppercase tracking-wider">Name</span>
+                      <div className="grid grid-cols-[40px_1fr_120px_120px_48px] items-center px-4 py-3 border-b border-[#e8eef1] bg-[#fcfdfe]">
+                        <div className="flex justify-center">
+                          <input
+                            type="checkbox"
+                            checked={items.length > 0 && selectedItems.length === items.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedItems(items.map((i) => i.id));
+                              } else {
+                                setSelectedItems([]);
+                              }
+                            }}
+                            className="rounded border-[#c2d1d9] text-[#264f5e] focus:ring-[#264f5e] cursor-pointer"
+                          />
+                        </div>
+                        <span className="text-[11px] font-bold text-[#6b8a96] uppercase tracking-wider pl-2">Name</span>
                         <span className="text-[11px] font-bold text-[#6b8a96] uppercase tracking-wider">Size / Type</span>
                         <span className="text-[11px] font-bold text-[#6b8a96] uppercase tracking-wider">Created</span>
                         <span />
@@ -529,10 +596,21 @@ export default function AdminClientDocumentsPage() {
                         {folders.map((item) => (
                           <div
                             key={item.id}
-                            onClick={() => handleFolderClick(item)}
-                            className="grid grid-cols-[1fr_120px_120px_48px] items-center px-6 py-3.5 hover:bg-[#f6f9fb] transition-colors cursor-pointer group"
+                            className="grid grid-cols-[40px_1fr_120px_120px_48px] items-center px-4 py-3.5 hover:bg-[#f6f9fb] transition-colors group"
                           >
-                            <div className="flex items-center gap-4 min-w-0 pr-4">
+                            <div className="flex justify-center items-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedItems.includes(item.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedItems((prev) => [...prev, item.id]);
+                                  else setSelectedItems((prev) => prev.filter((id) => id !== item.id));
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded border-[#c2d1d9] text-[#264f5e] focus:ring-[#264f5e] cursor-pointer"
+                              />
+                            </div>
+                            <div className="flex items-center gap-4 min-w-0 pr-4 pl-2 cursor-pointer" onClick={() => handleFolderClick(item)}>
                               <Folder className="w-6 h-6 text-[#4a86e8] shrink-0 fill-[#4a86e8]/10" />
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-[#1a3340] truncate">{item.name}</p>
@@ -553,11 +631,22 @@ export default function AdminClientDocumentsPage() {
                         {files.map((item) => (
                           <div
                             key={item.id}
-                            className={`grid grid-cols-[1fr_120px_120px_48px] items-center px-6 py-3.5 transition-colors cursor-default group ${
+                            className={`grid grid-cols-[40px_1fr_120px_120px_48px] items-center px-4 py-3.5 transition-colors cursor-default group ${
                               previewItem?.id === item.id ? "bg-[#f6f9fb] shadow-[inset_2px_0_0_0_#264f5e]" : "hover:bg-[#f6f9fb]"
                             }`}
                           >
-                            <div className="flex items-center gap-4 min-w-0 pr-4">
+                            <div className="flex justify-center items-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedItems.includes(item.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedItems((prev) => [...prev, item.id]);
+                                  else setSelectedItems((prev) => prev.filter((id) => id !== item.id));
+                                }}
+                                className="rounded border-[#c2d1d9] text-[#264f5e] focus:ring-[#264f5e] cursor-pointer"
+                              />
+                            </div>
+                            <div className="flex items-center gap-4 min-w-0 pr-4 pl-2">
                               <div className="shrink-0">{getFileIcon(item)}</div>
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-[#1a3340] truncate">{item.name}</p>
