@@ -90,7 +90,7 @@ export function LoginForm() {
       }
 
       if (data.session) {
-        console.log("Login successful, session established.");
+        // Session established — let the router redirect handle the rest.
         setLoginData({ email: "", password: "" });
         // Hard navigation: forces a full HTTP request so the middleware
         // reads the committed session cookie and redirects by role

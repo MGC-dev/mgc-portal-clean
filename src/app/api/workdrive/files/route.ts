@@ -19,14 +19,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "No email associated with user" }, { status: 400 });
     }
 
-    console.log(`[WorkDrive Debug] Looking up WorkDrive root folder for email: ${email}`);
-
     // 1. Get root folder ID from Bigin
     const rootFolderId = await getClientFolderIdFromBigin(email);
-    console.log(`[WorkDrive Debug] Found root folderId in Bigin: ${rootFolderId}`);
     
     if (!rootFolderId) {
-      console.log(`[WorkDrive Debug] No folder assigned for this user.`);
       return NextResponse.json({ files: [], message: "No WorkDrive folder assigned yet." });
     }
 
@@ -34,7 +30,6 @@ export async function GET(request: Request) {
 
     // 2. Fetch files from WorkDrive
     const files = await listWorkDriveFolder(folderIdToFetch);
-    console.log(`[WorkDrive Debug] Fetched ${files.length} items from WorkDrive folder ${folderIdToFetch}`);
 
     return NextResponse.json({ files, folderId: folderIdToFetch, rootFolderId });
   } catch (error: any) {

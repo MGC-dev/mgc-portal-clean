@@ -31,8 +31,6 @@ export default function CompanyProfilePage() {
 
   useEffect(() => {
     async function loadProfile() {
-      console.log("[v0] Starting to load profile, user:", user);
-
       try {
         const timeoutMs = 15000;
         const withTimeout = <T,>(p: PromiseLike<T>, label: string): Promise<T> => {
@@ -43,13 +41,11 @@ export default function CompanyProfilePage() {
             ),
           ]) as Promise<T>;
         };
-        console.log("[v0] Fetching profile for current session", user?.id ? `(userId=${user.id})` : "(client user not yet hydrated)");
         const res = await withTimeout(
           fetch("/api/profile", { headers: { accept: "application/json" } }),
           "Profile fetch"
         );
         const json = await withTimeout(res.json(), "Profile JSON").catch(() => ({} as any));
-        console.log("[v0] Profile API result:", { status: res.status, json });
         if (!res.ok) {
           const msg = json?.error || "Failed to load profile";
           console.error("[v0] Error loading profile:", msg);
@@ -58,10 +54,7 @@ export default function CompanyProfilePage() {
         }
 
         if (json?.profile) {
-          console.log("[v0] Successfully loaded profile:", json.profile);
           setProfile(json.profile as ProfileData);
-        } else {
-          console.log("[v0] No profile found; using defaults");
         }
       } catch (error) {
         console.error("[v0] Exception loading profile:", error);

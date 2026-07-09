@@ -278,8 +278,6 @@ export async function getWorkDriveFolderZipStream(folderId: string) {
   }
 
   const data = await multizipRes.json();
-  console.log("[WorkDrive Debug] Multizip Response Status:", multizipRes.status);
-  console.log("[WorkDrive Debug] Multizip Response Data:", JSON.stringify(data));
   const dlLink = data.download_link;
   if (!dlLink) {
     throw new Error(`No download link returned from Zoho multizip API. Response keys: ${Object.keys(data || {}).join(", ")}`);

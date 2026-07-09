@@ -82,7 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const getInitialUser = async () => {
       try {
-        console.log("[auth] Getting initial user...");
         // getUser() validates the session server-side and reads the cookie.
         // getSession() only reads the locally-cached JWT, which is absent when
         // login was performed on a different tab/page or after a hard refresh
@@ -97,23 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const u = data?.user ?? null;
-        console.log("[auth] Initial user:", u ? "Found" : "None");
-
         if (u) setUser(u);
 
         // Resolve auth as soon as the user is known — DO NOT wait on the
         // profile fetch. Every page gates on !authLoading; if this is
         // deferred until after fetchProfile, a stalled profile query holds
         // the gate shut and every page spins forever.
-        console.log("[auth] Setting loading to false");
         setLoading(false);
 
         // Fetch profile as a non-blocking follow-up.
         if (u) {
-          console.log("[auth] Fetching profile for user:", u.id);
           const profileData = await withTimeout(fetchProfile(u.id), 4000);
           setProfile(profileData ?? null);
-          console.log("[auth] Profile loaded:", profileData ? "Success" : "Failed/Timeout");
         }
       } catch (e) {
         console.error("[auth] init error:", e);
@@ -125,7 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[auth] Auth state changed:", event);
       if (session?.user) {
         setUser(session.user);
         // Clear loading before the profile fetch — same reason as getInitialUser.
