@@ -1,20 +1,35 @@
+/**
+ * Server-side Supabase clients for Next.js App Router.
+ *
+ * - createServerSupabaseClient: anon-key client that reads/writes cookies
+ * - createAdminSupabaseClient:  service-role client for privileged operations
+ * - getUserAndProfile:          resolves the current user + profile (Bearer or cookie)
+ * - isAdmin / requireAdmin:     role-check helpers
+ */
+
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { supabaseCookieOptions } from "@/lib/supabase-cookies";
 
+// ---------------------------------------------------------------------------
+// Server client (reads/writes session cookies)
+// ---------------------------------------------------------------------------
 export const createServerSupabaseClient = async () => {
   const cookieStore = await cookies();
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
   if (!url || !anon) {
-    throw new Error("Missing Supabase envs: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY"
+    );
   }
+
   return createServerClient(url, anon, {
     cookies: {
       // Use getAll/setAll — @supabase/ssr chunks large JWTs across multiple
-      // cookies (e.g. sb-xxx-auth-token.0, .1 …). A single `get(name)` call
-      // cannot reassemble them, causing getUser() to always return null.
+      // cookies (sb-xxx-auth-token.0, .1, …). getAll reassembles them.
       getAll() {
         return cookieStore.getAll();
       },
@@ -24,24 +39,27 @@ export const createServerSupabaseClient = async () => {
             cookieStore.set(name, value, options)
           );
         } catch {
-          // setAll is called from Server Components where cookies are read-only.
-          // Safe to ignore — the middleware will handle refreshing the session.
+          // Server Components have read-only cookies.
+          // Middleware handles the actual session refresh write.
         }
       },
     },
-    cookieOptions: supabaseCookieOptions,
   });
 };
 
-// Admin client using service role key for server-side operations only
+// ---------------------------------------------------------------------------
+// Admin client (service-role key — bypasses RLS, server-only)
+// ---------------------------------------------------------------------------
 export const createAdminSupabaseClient = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
   if (!url || !serviceKey) {
     throw new Error(
-      "Missing Supabase URL or Service Role key. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
     );
   }
+
   return createClient(url, serviceKey, {
     auth: {
       autoRefreshToken: false,
@@ -50,12 +68,19 @@ export const createAdminSupabaseClient = () => {
   });
 };
 
-// Helpers: get current user and profile (server-side)
+// ---------------------------------------------------------------------------
+// getUserAndProfile
+//
+// Supports two auth strategies:
+//   1. Bearer token in Authorization header (sent by authedFetch on client)
+//   2. Session cookies (set by middleware on every request)
+// ---------------------------------------------------------------------------
 export async function getUserAndProfile(request?: Request) {
   const authHeader = request?.headers.get("authorization");
   const bearerToken = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
 
   if (bearerToken) {
+    // Validate the JWT directly using the admin client (no cookie lookup needed)
     const admin = createAdminSupabaseClient();
     const {
       data: { user },
@@ -73,6 +98,7 @@ export async function getUserAndProfile(request?: Request) {
     return { user, profile };
   }
 
+  // Fallback: read from session cookies (refreshed by middleware)
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -90,24 +116,32 @@ export async function getUserAndProfile(request?: Request) {
   return { user, profile };
 }
 
-export async function isAdmin(request?: Request) {
+// ---------------------------------------------------------------------------
+// Role helpers
+// ---------------------------------------------------------------------------
+export async function isAdmin(request?: Request): Promise<boolean> {
   const { user, profile } = await getUserAndProfile(request);
   if (!user) return false;
-  // Prefer profile.role, fallback to role_assignments
+
+  // Primary check: profile.role column
   if (profile?.role && ["admin", "super_admin"].includes(profile.role)) {
     return true;
   }
+
+  // Fallback: role_assignments table
   const supabase = request?.headers.get("authorization")
     ? createAdminSupabaseClient()
     : await createServerSupabaseClient();
+
   const { data } = await supabase
     .from("role_assignments")
     .select("role")
     .eq("user_id", user.id)
     .in("role", ["admin", "super_admin"]);
+
   return Array.isArray(data) && data.length > 0;
 }
 
-export async function requireAdmin(request?: Request) {
+export async function requireAdmin(request?: Request): Promise<boolean> {
   return (await isAdmin(request)) === true;
 }
