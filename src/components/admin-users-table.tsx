@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertBanner } from "@/components/ui/alert-banner";
+import { authedFetch } from "@/lib/auth-fetch";
 import {
   Dialog,
   DialogContent,
@@ -62,7 +63,7 @@ export default function AdminUsersTable() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/users", { headers: { accept: "application/json" } });
+      const res = await authedFetch("/api/admin/users", { headers: { accept: "application/json" } });
       const json = await parseJsonOrThrow(res);
       setUsers(json.users || []);
     } catch (e: any) {
@@ -79,7 +80,7 @@ export default function AdminUsersTable() {
   const deleteUser = async (userId: string) => {
     setActionLoading(true);
     try {
-      const res = await fetch("/api/admin/delete-user", {
+      const res = await authedFetch("/api/admin/delete-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -98,7 +99,7 @@ export default function AdminUsersTable() {
     setActionLoading(true);
     try {
       const duration = suspendDuration[userId] || "87600h"; // default ~10 years
-      const res = await fetch("/api/admin/suspend-user", {
+      const res = await authedFetch("/api/admin/suspend-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, duration }),
@@ -116,7 +117,7 @@ export default function AdminUsersTable() {
   const unsuspendUser = async (userId: string) => {
     setActionLoading(true);
     try {
-      const res = await fetch("/api/admin/unsuspend-user", {
+      const res = await authedFetch("/api/admin/unsuspend-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),

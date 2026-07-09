@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase-server";
+import { createAdminSupabaseClient, getUserAndProfile, isAdmin } from "@/lib/supabase-server";
 import { getZohoRequest } from "@/lib/zoho";
 
 // Relax context typing for Next.js route validation compatibility
 export async function GET(req: Request, context: any) {
   const { params } = (context || {}) as { params: { id: string } };
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  
+  const { user } = await getUserAndProfile(req);
+
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -27,13 +24,7 @@ export async function GET(req: Request, context: any) {
 
   // Allow client owner or admin
   if (contract.client_user_id !== user.id) {
-    const { data: roles } = await supabase
-      .from("role_assignments")
-      .select("role")
-      .eq("user_id", user.id)
-      .in("role", ["admin", "super_admin"]);
-    const isAdmin = Array.isArray(roles) && roles.length > 0;
-    if (!isAdmin) {
+    if (!(await isAdmin(req))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }

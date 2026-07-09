@@ -5,7 +5,7 @@ import { createZohoRequest } from "@/lib/zoho";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const isAdmin = await requireAdmin();
+  const isAdmin = await requireAdmin(req);
   if (!isAdmin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

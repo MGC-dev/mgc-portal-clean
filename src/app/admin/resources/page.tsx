@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { type Resource } from "@/lib/resources";
+import { authedFetch } from "@/lib/auth-fetch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export default function AdminResourcesPage() {
@@ -44,15 +45,14 @@ export default function AdminResourcesPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/resources", { 
+        const res = await authedFetch("/api/resources", {
           headers: { accept: "application/json" },
-          credentials: "include"
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || "Failed to load resources");
         setResources((json?.resources || []) as Resource[]);
         // Load clients for assignment selector
-        const usersRes = await fetch("/api/admin/users?perPage=200", { headers: { accept: "application/json" } });
+        const usersRes = await authedFetch("/api/admin/users?perPage=200", { headers: { accept: "application/json" } });
         const usersJson = await usersRes.json();
         if (usersRes.ok && Array.isArray(usersJson?.users)) {
           const clientOptions = (usersJson.users as any[])
@@ -90,7 +90,7 @@ export default function AdminResourcesPage() {
       if (externalUrl) formData.append("external_url", externalUrl);
       formData.append("client_user_id", clientUserId);
 
-      const res = await fetch("/api/admin/resources/upload", {
+      const res = await authedFetch("/api/admin/resources/upload", {
         method: "POST",
         body: formData,
       });
@@ -124,7 +124,7 @@ export default function AdminResourcesPage() {
     setDeleting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/resources/${confirmId}`, { method: "DELETE" });
+      const res = await authedFetch(`/api/admin/resources/${confirmId}`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Delete failed");
       setResources((prev) => prev.filter((r) => r.id !== confirmId));

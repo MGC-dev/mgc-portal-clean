@@ -26,7 +26,7 @@ function parseStorageUrl(url: string): { bucket: string; objectPath: string } | 
 export async function DELETE(_req: Request, context: any) {
   const { params } = (context || {}) as { params: { id: string } };
   try {
-    const adminOk = await isAdmin();
+    const adminOk = await isAdmin(_req);
     if (!adminOk) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

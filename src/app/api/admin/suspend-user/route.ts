@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase-server";
+import { createAdminSupabaseClient, requireAdmin } from "@/lib/supabase-server";
 
 // Suspend (ban) user for a given duration; use 'indefinite' for permanent
 export async function POST(request: Request) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { userId, duration } = await request.json();
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 });
 

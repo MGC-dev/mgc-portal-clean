@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { HelpCircle, RefreshCw, Search, ChevronDown } from "lucide-react";
+import { authedFetch } from "@/lib/auth-fetch";
 
 type Ticket = {
   id: string;
@@ -29,7 +30,7 @@ export default function AdminSupportPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/support/list", { cache: "no-store" });
+      const res = await authedFetch("/api/admin/support/list", { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to load tickets");
       setTickets(json?.data || []);
@@ -42,7 +43,7 @@ export default function AdminSupportPage() {
 
   async function updateStatus(id: string, status: string) {
     try {
-      const res = await fetch("/api/admin/support/update-status", {
+      const res = await authedFetch("/api/admin/support/update-status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { createAdminSupabaseClient, createServerSupabaseClient, requireAdmin } from "@/lib/supabase-server";
+import { createAdminSupabaseClient, requireAdmin } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const isAdmin = await requireAdmin();
+    const isAdmin = await requireAdmin(request);
     if (!isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

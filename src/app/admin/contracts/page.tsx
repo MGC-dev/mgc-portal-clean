@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useRouter } from "next/navigation";
+import { authedFetch } from "@/lib/auth-fetch";
 
 export default function AdminContractsPage() {
   const { confirm, dialog } = useConfirm();
@@ -68,7 +69,7 @@ export default function AdminContractsPage() {
       try {
         setClientsLoading(true);
         setClientsError(null);
-        const res = await fetch(`/api/admin/users?perPage=200`, {
+        const res = await authedFetch(`/api/admin/users?perPage=200`, {
           headers: { accept: "application/json" },
         });
         const json = await parseJsonOrThrow(res);
@@ -91,9 +92,8 @@ export default function AdminContractsPage() {
       try {
         setContractsLoading(true);
         setContractsError(null);
-        const res = await fetch('/api/admin/contracts', {
+        const res = await authedFetch('/api/admin/contracts', {
           headers: { accept: "application/json" },
-          credentials: "include"
         });
         const json = await parseJsonOrThrow(res);
         setContracts(json.contracts || []);
@@ -111,10 +111,10 @@ export default function AdminContractsPage() {
   async function handleRefreshStatus(contractId: string) {
     try {
       setRefreshingContract(contractId);
-      const res = await fetch(`/api/contracts/${contractId}/status`, { headers: { accept: "application/json" } });
+      const res = await authedFetch(`/api/contracts/${contractId}/status`, { headers: { accept: "application/json" } });
       const json = await parseJsonOrThrow(res);
       // Reload contracts to reflect updated status
-      const listRes = await fetch('/api/admin/contracts', { headers: { accept: "application/json" } });
+      const listRes = await authedFetch('/api/admin/contracts', { headers: { accept: "application/json" } });
       const listJson = await parseJsonOrThrow(listRes);
       setContracts(listJson.contracts || []);
     } catch (e: any) {
@@ -141,7 +141,7 @@ export default function AdminContractsPage() {
       form.append("client_user_id", selectedClientId);
       form.append("title", title);
       form.append("file", file);
-      const res = await fetch("/api/admin/contracts/upload", {
+      const res = await authedFetch("/api/admin/contracts/upload", {
         method: "POST",
         body: form,
       });
@@ -151,7 +151,7 @@ export default function AdminContractsPage() {
       setTitle("");
       setFile(null);
       // Reload contracts to show the new one
-      const contractsRes = await fetch('/api/admin/contracts', {
+      const contractsRes = await authedFetch('/api/admin/contracts', {
         headers: { accept: "application/json" },
       });
       if (contractsRes.ok) {
@@ -168,7 +168,7 @@ export default function AdminContractsPage() {
   async function handleViewFile(contractId: string) {
     setMessage(null);
     try {
-      const res = await fetch(`/api/contracts/${contractId}/url`, { headers: { accept: "application/json" } });
+      const res = await authedFetch(`/api/contracts/${contractId}/url`, { headers: { accept: "application/json" } });
       const json = await parseJsonOrThrow(res);
       const { url } = json;
       if (!url) {
@@ -184,7 +184,7 @@ export default function AdminContractsPage() {
   async function handleLinkZoho(contractId: string) {
     setLinkingContract(contractId);
     try {
-      const res = await fetch(`/api/admin/contracts/${contractId}/link-zoho`, {
+      const res = await authedFetch(`/api/admin/contracts/${contractId}/link-zoho`, {
         method: "POST",
         headers: { accept: "application/json" },
       });
@@ -214,7 +214,7 @@ export default function AdminContractsPage() {
         return;
       }
       // Fall back to API generation
-      const res = await fetch(`/api/contracts/${contract.id}/sign-url`, { headers: { accept: "application/json" } });
+      const res = await authedFetch(`/api/contracts/${contract.id}/sign-url`, { headers: { accept: "application/json" } });
       const json = await parseJsonOrThrow(res);
       const url = json?.url as string | undefined;
       if (url) {
@@ -241,7 +241,7 @@ export default function AdminContractsPage() {
     setDeletingContract(contractId);
     setMessage(null);
     try {
-      const res = await fetch(`/api/admin/contracts/${contractId}`, {
+      const res = await authedFetch(`/api/admin/contracts/${contractId}`, {
         method: "DELETE",
         headers: { accept: "application/json" },
       });

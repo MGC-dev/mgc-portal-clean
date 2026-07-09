@@ -6,12 +6,12 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     // Ensure requester is an admin
-    const admin = await isAdmin();
+    const admin = await isAdmin(req);
     if (!admin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { user } = await getUserAndProfile();
+    const { user } = await getUserAndProfile(req);
   const form = await req.formData();
 
   const title = (form.get("title") as string) || "";

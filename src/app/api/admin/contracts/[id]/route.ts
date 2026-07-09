@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
-import { createAdminSupabaseClient, createServerSupabaseClient } from "@/lib/supabase-server";
+import { createAdminSupabaseClient, requireAdmin } from "@/lib/supabase-server";
 
 // Relax context typing to avoid Next.js route type validation issues across versions
-export async function DELETE(_req: Request, context: any) {
+export async function DELETE(req: Request, context: any) {
   const { params } = (context || {}) as { params: { id: string } };
   // Require admin
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  const isAdmin = Boolean(profile?.role && ["admin", "super_admin"].includes(profile!.role!));
-  if (!isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await requireAdmin(req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const admin = createAdminSupabaseClient();
   const bucket = process.env.SUPABASE_CONTRACTS_BUCKET || "contracts";

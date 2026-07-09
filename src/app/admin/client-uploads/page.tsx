@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Search, ChevronDown, ChevronUp, SortAsc, SortDesc } from "lucide-react";
 import Link from "next/link";
+import { authedFetch } from "@/lib/auth-fetch";
 
 type AdminDoc = {
   id: string;
@@ -90,7 +91,7 @@ export default function AdminClientUploadsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/client-documents", { headers: { accept: "application/json" } });
+      const res = await authedFetch("/api/admin/client-documents", { headers: { accept: "application/json" } });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to load documents");
       setDocs((json?.documents || []) as AdminDoc[]);
@@ -107,7 +108,7 @@ export default function AdminClientUploadsPage() {
 
   async function openDoc(id: string) {
     try {
-      const res = await fetch(`/api/client-documents/${id}/url`, { headers: { accept: "application/json" } });
+      const res = await authedFetch(`/api/client-documents/${id}/url`, { headers: { accept: "application/json" } });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Could not open document");
       const url = json?.url as string;
@@ -132,7 +133,7 @@ export default function AdminClientUploadsPage() {
     setSelected(doc);
     setPreviewUrl(null);
     try {
-      const res = await fetch(`/api/client-documents/${doc.id}/url`, { headers: { accept: "application/json" } });
+      const res = await authedFetch(`/api/client-documents/${doc.id}/url`, { headers: { accept: "application/json" } });
       const json = await res.json();
       if (res.ok && json?.url) setPreviewUrl(json.url as string);
     } catch {}
@@ -141,7 +142,7 @@ export default function AdminClientUploadsPage() {
   async function deleteDoc(id: string) {
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/admin/client-documents/${id}`, { method: "DELETE" });
+      const res = await authedFetch(`/api/admin/client-documents/${id}`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Delete failed");
       await loadDocs();

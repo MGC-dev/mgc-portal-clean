@@ -92,7 +92,11 @@ export function LoginForm() {
       if (data.session) {
         console.log("Login successful, session established.");
         setLoginData({ email: "", password: "" });
-        router.push("/mgdashboard");
+        // Let the middleware handle role-based routing:
+        // admins → /admin, clients → /mgdashboard.
+        // Pushing to "/" triggers the middleware's redirect logic
+        // after the session cookie is fully committed.
+        router.push("/");
         router.refresh();
         return;
       }
