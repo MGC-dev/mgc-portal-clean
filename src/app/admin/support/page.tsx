@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { HelpCircle, RefreshCw, Search, ChevronDown } from "lucide-react";
 import { authedFetch } from "@/lib/auth-fetch";
+import { useAuth } from "@/hooks/use-auth";
 
 type Ticket = {
   id: string;
@@ -20,6 +21,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export default function AdminSupportPage() {
+  const { user, loading: authLoading } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,8 +59,10 @@ export default function AdminSupportPage() {
   }
 
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    if (!authLoading && user) {
+      fetchTickets();
+    }
+  }, [authLoading, user]);
 
   const openCount = tickets.filter((t) => t.status === "open").length;
   const closedCount = tickets.filter((t) => t.status === "closed").length;

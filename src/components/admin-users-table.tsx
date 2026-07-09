@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertBanner } from "@/components/ui/alert-banner";
 import { authedFetch } from "@/lib/auth-fetch";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ type AdminUser = {
 };
 
 export default function AdminUsersTable() {
+  const { user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,9 +75,13 @@ export default function AdminUsersTable() {
     }
   };
 
+  // Wait until AuthProvider has resolved the session before fetching.
+  // Firing before auth is ready causes 401s because no Bearer token exists yet.
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!authLoading && user) {
+      fetchUsers();
+    }
+  }, [authLoading, user]);
 
   const deleteUser = async (userId: string) => {
     setActionLoading(true);

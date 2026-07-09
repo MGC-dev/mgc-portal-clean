@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { type Resource } from "@/lib/resources";
 import { authedFetch } from "@/lib/auth-fetch";
+import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export default function AdminResourcesPage() {
+  const { user, loading: authLoading } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<"document" | "video">("document");
@@ -41,36 +43,38 @@ export default function AdminResourcesPage() {
   }
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await authedFetch("/api/resources", {
-          headers: { accept: "application/json" },
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || "Failed to load resources");
-        setResources((json?.resources || []) as Resource[]);
-        // Load clients for assignment selector
-        const usersRes = await authedFetch("/api/admin/users?perPage=200", { headers: { accept: "application/json" } });
-        const usersJson = await usersRes.json();
-        if (usersRes.ok && Array.isArray(usersJson?.users)) {
-          const clientOptions = (usersJson.users as any[])
-            .filter((u: any) => (u?.profile?.role || "") === "client")
-            .map((u: any) => ({
-              id: u.id,
-              label: u?.profile?.full_name || u?.email || u.id,
-            }))
-            .sort((a: any, b: any) => String(a.label).localeCompare(String(b.label)));
-          setClients(clientOptions);
+    if (!authLoading && user) {
+      (async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const res = await authedFetch("/api/resources", {
+            headers: { accept: "application/json" },
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || "Failed to load resources");
+          setResources((json?.resources || []) as Resource[]);
+          // Load clients for assignment selector
+          const usersRes = await authedFetch("/api/admin/users?perPage=200", { headers: { accept: "application/json" } });
+          const usersJson = await usersRes.json();
+          if (usersRes.ok && Array.isArray(usersJson?.users)) {
+            const clientOptions = (usersJson.users as any[])
+              .filter((u: any) => (u?.profile?.role || "") === "client")
+              .map((u: any) => ({
+                id: u.id,
+                label: u?.profile?.full_name || u?.email || u.id,
+              }))
+              .sort((a: any, b: any) => String(a.label).localeCompare(String(b.label)));
+            setClients(clientOptions);
+          }
+        } catch (e: any) {
+          setError(e?.message || "Failed to load resources");
+        } finally {
+          setLoading(false);
         }
-      } catch (e: any) {
-        setError(e?.message || "Failed to load resources");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+      })();
+    }
+  }, [authLoading, user]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

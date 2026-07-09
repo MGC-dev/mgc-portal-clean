@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { authedFetch } from "@/lib/auth-fetch";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AdminContractsPage() {
+  const { user, loading: authLoading } = useAuth();
   const { confirm, dialog } = useConfirm();
   async function parseJsonOrThrow(res: Response) {
     const ct = res.headers.get("content-type") || "";
@@ -104,9 +106,11 @@ export default function AdminContractsPage() {
       }
     }
 
-    loadClients();
-    loadContracts();
-  }, []);
+    if (!authLoading && user) {
+      loadClients();
+      loadContracts();
+    }
+  }, [authLoading, user]);
 
   async function handleRefreshStatus(contractId: string) {
     try {

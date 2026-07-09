@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/auth-fetch";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Folder,
   FileText,
@@ -74,6 +75,7 @@ function formatDate(ts?: string | number) {
 }
 
 export default function AdminClientDocumentsPage() {
+  const { user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [userSearch, setUserSearch] = useState("");
@@ -99,8 +101,10 @@ export default function AdminClientDocumentsPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!authLoading && user) {
+      fetchUsers();
+    }
+  }, [authLoading, user]);
 
   async function fetchUsers() {
     try {

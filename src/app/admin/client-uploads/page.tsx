@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Search, ChevronDown, ChevronUp, SortAsc, SortDesc } from "lucide-react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/auth-fetch";
+import { useAuth } from "@/hooks/use-auth";
 
 type AdminDoc = {
   id: string;
@@ -17,6 +18,7 @@ type AdminDoc = {
 };
 
 export default function AdminClientUploadsPage() {
+  const { user, loading: authLoading } = useAuth();
   const [docs, setDocs] = useState<AdminDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,8 +105,10 @@ export default function AdminClientUploadsPage() {
   }
 
   useEffect(() => {
-    loadDocs();
-  }, []);
+    if (!authLoading && user) {
+      loadDocs();
+    }
+  }, [authLoading, user]);
 
   async function openDoc(id: string) {
     try {
