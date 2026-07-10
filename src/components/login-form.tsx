@@ -126,29 +126,29 @@ export function LoginForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <LoadingOverlay show={loading} label="Signing you in..." variant="default" />
       {error && (
-        <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-[14px]">
           {error}
         </div>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-white">
-          Email Address
+        <Label htmlFor="email" className="text-[#1d1d1f] text-[14px] font-medium">
+          Email
         </Label>
         <Input
           id="email"
           name="email"
           type="email"
-          placeholder="Enter your email"
+          placeholder="jdoe.mobbin@gmail.com"
           value={loginData.email}
           onChange={handleInputChange}
           required
-          className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:border-white/40 focus:ring-white/20"
+          className="h-12 bg-white border-zinc-200 text-[#1d1d1f] placeholder:text-[#86868b] focus-visible:ring-[#0071e3]/30 focus-visible:border-[#0071e3] rounded-[10px] transition-all"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password" className="text-white">
+        <Label htmlFor="password" className="text-[#1d1d1f] text-[14px] font-medium">
           Password
         </Label>
         <Input
@@ -159,14 +159,14 @@ export function LoginForm() {
           value={loginData.password}
           onChange={handleInputChange}
           required
-          className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:border-white/40 focus:ring-white/20"
+          className="h-12 bg-white border-zinc-200 text-[#1d1d1f] placeholder:text-[#86868b] focus-visible:ring-[#0071e3]/30 focus-visible:border-[#0071e3] rounded-[10px] transition-all"
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-1">
         <Link
           href="/register/forgotpassword"
-          className="text-sm text-blue-200 hover:text-white"
+          className="text-[13px] text-[#0071e3] hover:text-[#0077ed] font-medium"
         >
           Forgot password?
         </Link>
@@ -174,10 +174,10 @@ export function LoginForm() {
 
       <Button
         type="submit"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+        className="w-full h-12 bg-[#264f5e] hover:bg-[#1f424e] text-white font-medium rounded-[10px] transition-all"
         disabled={loading}
       >
-        {"Sign In"}
+        {"Continue with Email"}
       </Button>
     </form>
   );

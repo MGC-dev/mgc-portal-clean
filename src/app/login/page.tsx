@@ -1,78 +1,70 @@
 import { LoginForm } from "@/components/login-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('/modern-office-building.png')`,
-        }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-slate-900/50 to-blue-800/60" />
-
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-md space-y-6">
-        {/* Logo/Header */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg flex items-center justify-center shadow-xl overflow-hidden">
-            <Image
-              src="/logo.png"
-              alt="MG Consulting logo"
-              width={48}
-              height={48}
-              priority
-              style={{ objectFit: "contain" }}
-            />
+    <div className="min-h-screen w-full flex bg-white">
+      {/* Left Column: Form */}
+      <div className="w-full lg:w-1/2 flex flex-col p-8 lg:p-24 justify-center relative">
+        <div className="w-full max-w-sm mx-auto space-y-8">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
+              Login
+            </h1>
+            <p className="text-zinc-500 text-[15px]">
+              Welcome back! Please enter your details.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-            MG Consulting Firm
-          </h1>
-          <p className="text-white/90 drop-shadow-md">Welcome back</p>
-        </div>
 
-        <Card className="bg-white/15 backdrop-blur-xl border border-white/20 shadow-2xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl text-white">Sign In</CardTitle>
-            <CardDescription className="text-white/80">
-              Enter your credentials to access your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <LoginForm />
-          </CardContent>
-        </Card>
+          <LoginForm />
 
-        {/* Footer Links */}
-        <div className="text-center space-y-2">
-          <p className="text-sm text-white/90 drop-shadow-md">
-            Don't have an account?{" "}
-            <Link
-              href="/register"
-              className="text-blue-200 hover:text-white font-medium underline underline-offset-2"
-            >
-              Create one here
-            </Link>
-          </p>
-          <div className="flex justify-center space-x-4 text-xs text-white/80 drop-shadow-sm">
-            <Link
-              href="https://mgconsultingfirm.com/privacy-policy/"
-              className="hover:text-white underline underline-offset-2"
-            >
-              Privacy Policy
-            </Link>
+          <div className="text-center pt-2">
+            <p className="text-[14px] text-zinc-500">
+              Don't have an account?{" "}
+              <Link
+                href="/register"
+                className="text-[#0071e3] hover:text-[#0077ed] font-medium"
+              >
+                Sign up
+              </Link>
+            </p>
           </div>
         </div>
+      </div>
+
+      {/* Right Column: Graphic/Image */}
+      <div className="hidden lg:flex w-1/2 bg-zinc-50 items-center justify-center relative overflow-hidden border-l border-zinc-100">
+         <div
+           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20 grayscale"
+           style={{ backgroundImage: `url('/modern-office-building.png')` }}
+         />
+         <div className="absolute inset-0 bg-gradient-to-br from-[#264f5e]/90 to-[#1a3340]/95" />
+         
+         <div className="relative z-10 flex flex-col items-center justify-center text-center p-12 text-white">
+            <div className="inline-flex items-center gap-5 mb-12 px-6 py-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl">
+              <Image
+                src="/logo.png"
+                alt="MG Consulting logo"
+                width={60}
+                height={60}
+                className="object-contain drop-shadow-lg"
+              />
+              <div className="w-[1px] h-12 bg-white/20 rounded-full" />
+              <div className="flex flex-col items-start text-left">
+                <span className="text-2xl font-semibold tracking-tight text-white leading-tight">
+                  MG Consulting
+                </span>
+                <span className="text-sm font-medium tracking-[0.2em] text-white/70 uppercase leading-tight mt-1">
+                  Firm
+                </span>
+              </div>
+            </div>
+            <h2 className="text-3xl font-semibold tracking-tight mb-4">Empowering your business</h2>
+            <p className="text-white/80 max-w-md text-lg">
+              Access your client portal to manage documents, view contracts, and get support.
+            </p>
+         </div>
       </div>
     </div>
   );

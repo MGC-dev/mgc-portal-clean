@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { hashCode } from "@/lib/otp-store";
 import { createAdminSupabaseClient } from "@/lib/supabase-server";
 import { Resend } from "resend";
+import {
+  createWorkDriveFolder,
+  getBiginContactIdByEmail,
+  updateBiginContactWorkdriveId,
+} from "@/lib/zoho-workdrive";
 
 // POST /api/auth/verify-otp
 // Body: { email: string, code: string }
@@ -90,6 +95,35 @@ export async function POST(request: Request) {
 
       if (profileError) {
         return NextResponse.json({ error: profileError.message }, { status: 500 });
+      }
+
+      // Automatically provision a WorkDrive folder for this client and link it in Bigin
+      try {
+        const companyName = (meta.company_name as string | null) || (meta.full_name as string | null) || normalizedEmail;
+        const parentFolderId = process.env.NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID;
+
+        if (parentFolderId && companyName) {
+          // 1. Create a parent folder named after the company inside the root client documents folder
+          const newFolder = await createWorkDriveFolder(parentFolderId, companyName);
+          const newFolderId: string = newFolder?.id;
+
+          if (newFolderId) {
+            // 2. Find the matching Bigin contact and write the folder ID to their record
+            const contactId = await getBiginContactIdByEmail(normalizedEmail);
+            if (contactId) {
+              await updateBiginContactWorkdriveId(contactId, newFolderId);
+            } else {
+              console.warn(`[verify-otp] No Bigin contact found for ${normalizedEmail}; folder created but Bigin not updated.`);
+            }
+
+            console.log(`[verify-otp] WorkDrive folder "${companyName}" (${newFolderId}) created for ${normalizedEmail}`);
+          }
+        } else {
+          console.warn("[verify-otp] Skipping WorkDrive folder creation: missing parentFolderId or companyName.");
+        }
+      } catch (wdErr) {
+        // Non-fatal: log the error but do not block the user from completing signup
+        console.error("[verify-otp] WorkDrive folder creation failed:", wdErr);
       }
 
       // Send onboarding email after successful verification and profile upsert
