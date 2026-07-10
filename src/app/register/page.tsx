@@ -19,7 +19,7 @@ export default function RegisterPage() {
 
           <RegisterForm />
 
-          <div className="text-center pt-2 pb-8">
+          <div className="text-center pt-2 pb-8 space-y-4">
             <p className="text-[14px] text-zinc-500">
               Already have an account?{" "}
               <Link
@@ -29,6 +29,14 @@ export default function RegisterPage() {
                 Sign in here
               </Link>
             </p>
+            <Link
+              href="https://mgconsultingfirm.com/privacy-policy/"
+              className="text-xs text-zinc-400 hover:text-zinc-600 underline underline-offset-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Privacy Policy
+            </Link>
           </div>
         </div>
       </div>

@@ -19,7 +19,7 @@ export default function LoginPage() {
 
           <LoginForm />
 
-          <div className="text-center pt-2">
+          <div className="text-center pt-2 space-y-4">
             <p className="text-[14px] text-zinc-500">
               Don't have an account?{" "}
               <Link
@@ -29,6 +29,14 @@ export default function LoginPage() {
                 Sign up
               </Link>
             </p>
+            <Link
+              href="https://mgconsultingfirm.com/privacy-policy/"
+              className="text-xs text-zinc-400 hover:text-zinc-600 underline underline-offset-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Privacy Policy
+            </Link>
           </div>
         </div>
       </div>
