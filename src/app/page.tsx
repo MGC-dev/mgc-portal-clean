@@ -21,7 +21,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#fbfbfd] p-6 selection:bg-zinc-200">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#2a4457] p-6 selection:bg-white/20">
       <div className="w-full max-w-sm space-y-12">
         {/* Logo and Header */}
         <div className="text-center space-y-6">
@@ -36,10 +36,10 @@ export default async function HomePage() {
             />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">
+            <h1 className="text-2xl font-semibold tracking-tight text-white">
               MG Consulting Firm
             </h1>
-            <p className="text-[#86868b] text-[15px]">
+            <p className="text-white/70 text-[15px]">
               Welcome to your client portal
             </p>
           </div>
@@ -48,19 +48,19 @@ export default async function HomePage() {
         {/* Actions */}
         <div className="space-y-3">
           <Link href="/login" className="block">
-            <Button className="w-full h-12 text-[15px] font-medium bg-[#264f5e] hover:bg-[#1f424e] text-white rounded-[10px] transition-all shadow-sm border border-transparent">
+            <Button className="w-full h-12 text-[15px] font-medium bg-white hover:bg-white/90 text-[#2a4457] rounded-[10px] transition-all shadow-sm border border-transparent">
               Sign In
             </Button>
           </Link>
           <Link href="/register" className="block">
-            <Button variant="outline" className="w-full h-12 text-[15px] font-medium border-[#d2d2d7] text-[#1d1d1f] bg-white hover:bg-white/50 hover:text-[#1d1d1f] rounded-[10px] transition-all shadow-sm">
+            <Button variant="outline" className="w-full h-12 text-[15px] font-medium border-white/20 text-white bg-transparent hover:bg-white/10 hover:text-white rounded-[10px] transition-all shadow-sm">
               Create Account
             </Button>
           </Link>
         </div>
 
         {/* Footer */}
-        <div className="text-center text-[12px] text-[#86868b] pt-8">
+        <div className="text-center text-[12px] text-white/50 pt-8">
           <p>&copy; {new Date().getFullYear()} MG Consulting Firm. All rights reserved.</p>
         </div>
       </div>

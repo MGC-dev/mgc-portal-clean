@@ -214,7 +214,7 @@ export default function AppointmentScheduler({
             </div>
             <div>
               <Label htmlFor="email">Your Email</Label>
-              <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" />
+              <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@company.com" />
             </div>
           </div>
 

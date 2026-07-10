@@ -1,53 +1,10 @@
 "use client";
-import Sidebar from "@/components/sidebar";
-import Navbar from "@/components/navbar";
-import {
-  Bell,
-  Search,
-  LayoutDashboard,
-  Calendar,
-  FileText,
-  FileSignature,
-  BookOpen,
-  HelpCircle,
-  PlusSquare,
-  User,
-} from "lucide-react";
 import { useState } from "react";
 
 export default function ServiceAddOns() {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      {/* Sidebar - hidden on mobile */}
-      <div className="hidden md:block" onClick={() => setSidebarOpen(false)}>
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
-      </div>
-      {/* Sidebar (mobile overlay) */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          {/* Dark overlay */}
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50"
-            onClick={() => setSidebarOpen(false)}
-          />
-          {/* Sidebar drawer */}
-          <div className="relative z-50 w-64 bg-white shadow-lg">
-            <Sidebar
-              isOpen={isSidebarOpen}
-              onClose={() => setSidebarOpen(false)}
-            />
-          </div>
-        </div>
-      )}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top navbar */}
-        <header className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-b bg-white">
-          <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        </header>
-
-        {/* Main content */}
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Main content */}
         <main className="flex-1 flex flex-col">
           {/* Topbar */}
 
@@ -93,29 +50,6 @@ export default function ServiceAddOns() {
             </div>
           </div>
         </main>
-      </div>
-    </div>
-  );
-}
-
-// Sidebar item
-function SidebarItem({
-  icon,
-  label,
-  active,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm font-medium ${
-        active ? "bg-blue-800 text-white" : "text-gray-700 hover:bg-gray-100"
-      }`}
-    >
-      {icon}
-      {label}
     </div>
   );
 }
@@ -139,7 +73,7 @@ function AddOnCard({
   available: boolean;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow p-5 flex flex-col justify-between border">
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8 flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-semibold">{title}</h2>
@@ -165,10 +99,10 @@ function AddOnCard({
         </ul>
       </div>
       <button
-        className={`w-full py-2 rounded-md font-medium text-sm ${
+        className={`w-full py-3 rounded-[10px] font-medium text-sm transition-all ${
           available
-            ? "bg-blue-800 text-white hover:bg-blue-900"
-            : "bg-gray-300 text-gray-600 cursor-not-allowed"
+            ? "bg-[#264f5e] text-white hover:bg-[#1f424e]"
+            : "bg-[#f5f5f7] text-gray-400 cursor-not-allowed"
         }`}
         disabled={!available}
       >

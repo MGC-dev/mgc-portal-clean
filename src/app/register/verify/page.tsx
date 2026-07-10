@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -46,55 +45,89 @@ export default function VerifyPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4">
-      {/* Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('/modern-office-building.png')` }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/60 via-slate-900/50 to-blue-800/60" />
-
-      {/* Content: standalone verification */}
-      <div className="relative z-10 w-full max-w-md space-y-6">
-        {/* Logo/Header */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg flex items-center justify-center shadow-xl overflow-hidden">
-            <Image src="/logo.png" alt="MG Consulting logo" width={48} height={48} priority style={{ objectFit: "contain" }} />
+    <div className="min-h-screen w-full flex bg-white">
+      {/* Left Column: Form */}
+      <div className="w-full lg:w-1/2 flex flex-col p-8 lg:p-24 justify-center relative">
+        <div className="w-full max-w-sm mx-auto space-y-8">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
+              Verify your email
+            </h1>
+            <p className="text-zinc-500 text-[15px]">
+              Enter the 6-digit code we sent to {email || "your email"}.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Verify your email</h1>
-          <p className="text-white/90 drop-shadow-md">Enter the 6-digit code we sent to {email || "your email"}.</p>
-        </div>
 
-        {/* Verification Card */}
-        <Card className="bg-white/15 backdrop-blur-xl border border-white/20 shadow-2xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-xl text-white">Email Verification</CardTitle>
-            <CardDescription className="text-white/80">Complete verification to finish account setup</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <div className="space-y-4">
             {error && (
-              <div className="mb-3 bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-2 rounded-md text-sm">{error}</div>
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-[14px]">
+                {error}
+              </div>
             )}
             {success && (
-              <div className="mb-3 bg-green-500/20 border border-green-500/30 text-green-200 px-4 py-2 rounded-md text-sm">{success}</div>
+              <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-[14px]">
+                {success}
+              </div>
             )}
+            
             <div className="flex items-center gap-3">
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Enter 6-digit code"
                 maxLength={6}
-                className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:border-white/40 focus:ring-white/20"
+                className="h-12 flex-1 bg-white border-zinc-200 text-[#1d1d1f] placeholder:text-[#86868b] focus-visible:ring-[#0071e3]/30 focus-visible:border-[#0071e3] rounded-[10px] transition-all"
               />
-              <Button onClick={onVerify} disabled={loading || code.length < 6} className="bg-blue-600 text-white hover:bg-blue-700">
+              <Button 
+                onClick={onVerify} 
+                disabled={loading || code.length < 6} 
+                className="h-12 bg-[#264f5e] hover:bg-[#1f424e] text-white font-medium rounded-[10px] transition-all px-6"
+              >
                 Verify
               </Button>
             </div>
-            <div className="mt-3 text-sm text-white/80">
-              <Link href="/register" className="underline">Back to registration</Link>
+            
+            <div className="pt-2">
+              <Link 
+                href="/register" 
+                className="text-[14px] text-[#0071e3] hover:text-[#0077ed] font-medium"
+              >
+                &larr; Back to registration
+              </Link>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column: Graphic/Image */}
+      <div className="hidden lg:flex w-1/2 bg-zinc-50 items-center justify-center relative overflow-hidden border-l border-zinc-100">
+         <div
+           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20 grayscale"
+           style={{ backgroundImage: `url('/modern-office-building.png')` }}
+         />
+         <div className="absolute inset-0 bg-gradient-to-br from-[#264f5e]/90 to-[#1a3340]/95" />
+         
+         <div className="relative z-10 flex flex-col items-center justify-center text-center p-12 text-white">
+            <div className="inline-flex items-center gap-5 mb-12 px-6 py-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl">
+              <Image
+                src="/logo.png"
+                alt="MG Consulting logo"
+                width={60}
+                height={60}
+                className="object-contain drop-shadow-lg"
+              />
+              <div className="w-[1px] h-12 bg-white/20 rounded-full" />
+              <div className="flex flex-col items-start text-left">
+                <span className="text-2xl font-semibold tracking-tight text-white leading-tight">
+                  MG Consulting Firm
+                </span>
+              </div>
+            </div>
+            <h2 className="text-3xl font-semibold tracking-tight mb-4">Empowering your business</h2>
+            <p className="text-white/80 max-w-md text-lg">
+              Access your client portal to manage documents, view contracts, and get support.
+            </p>
+         </div>
       </div>
     </div>
   );

@@ -1,9 +1,6 @@
 "use client";
 
-import Sidebar from "@/components/sidebar";
-import Navbar from "@/components/navbar";
 import { FileText, Eye, Download } from "lucide-react";
-import { useState } from "react";
 
 const recaps = [
   {
@@ -17,42 +14,12 @@ const recaps = [
 ];
 
 export default function SessionRecapsPage() {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
-
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar - hidden on mobile */}
-            <div className="hidden md:block" onClick={() => setSidebarOpen(false)}>
-              <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
-            </div>
-             {/* Sidebar (mobile overlay) */}
-            {isSidebarOpen && (
-              <div className="fixed inset-0 z-50 flex">
-                {/* Dark overlay */}
-                <div
-                  className="fixed inset-0 bg-black bg-opacity-50"
-                  onClick={() => setSidebarOpen(false)}
-                />
-                {/* Sidebar drawer */}
-                <div className="relative z-50 w-64 bg-white shadow-lg">
-                  <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)}/>
-                </div>
-              </div>
-            )}
-
-      {/* Main Layout */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Navbar */}
-        <header className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3 border-b bg-white">
-          <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        </header>
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <h2 className="text-xl sm:text-2xl font-bold mb-6">Session Recaps</h2>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <h2 className="text-xl sm:text-2xl font-bold mb-6">Session Recaps</h2>
 
           {/* Outer Card */}
-          <div className="bg-white rounded-xl shadow p-4 sm:p-6">
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8">
             <h3 className="text-md sm:text-lg font-semibold mb-4">
               Recent Sessions
             </h3>
@@ -61,7 +28,7 @@ export default function SessionRecapsPage() {
               {recaps.map((r) => (
                 <div
                   key={r.id}
-                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white rounded-lg border shadow-sm p-4 gap-4"
+                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-5 gap-4"
                 >
                   {/* Left: icon + info */}
                   <div className="flex items-start gap-3">
@@ -82,10 +49,10 @@ export default function SessionRecapsPage() {
 
                   {/* Right: buttons */}
                   <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-                    <button className="flex items-center gap-1 border px-3 py-2 rounded-lg hover:bg-gray-100 text-sm w-full sm:w-auto justify-center">
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed] font-medium transition-all text-sm w-full sm:w-auto justify-center">
                       <Eye size={16} /> View
                     </button>
-                    <button className="flex items-center gap-1 border px-3 py-2 rounded-lg hover:bg-gray-100 text-sm w-full sm:w-auto justify-center">
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed] font-medium transition-all text-sm w-full sm:w-auto justify-center">
                       <Download size={16} /> Download
                     </button>
                   </div>
@@ -93,8 +60,6 @@ export default function SessionRecapsPage() {
               ))}
             </div>
           </div>
-        </main>
-      </div>
     </div>
   );
 }

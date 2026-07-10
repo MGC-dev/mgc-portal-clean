@@ -53,10 +53,7 @@ export default function LoginPage() {
               <div className="w-[1px] h-12 bg-white/20 rounded-full" />
               <div className="flex flex-col items-start text-left">
                 <span className="text-2xl font-semibold tracking-tight text-white leading-tight">
-                  MG Consulting
-                </span>
-                <span className="text-sm font-medium tracking-[0.2em] text-white/70 uppercase leading-tight mt-1">
-                  Firm
+                  MG Consulting Firm
                 </span>
               </div>
             </div>

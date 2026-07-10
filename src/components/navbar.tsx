@@ -4,7 +4,7 @@ import React from "react";
 import { Menu } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
-import LogoutButton from "./logout-button";
+
 
 interface NavbarProps {
   onMenuClick?: () => void;
@@ -27,7 +27,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <LogoutButton />
+        {/* Placeholder for future top right elements */}
       </div>
     </div>
   );

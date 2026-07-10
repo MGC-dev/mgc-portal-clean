@@ -139,7 +139,7 @@ export function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder="jdoe.mobbin@gmail.com"
+          placeholder="john@company.com"
           value={loginData.email}
           onChange={handleInputChange}
           required
@@ -177,7 +177,7 @@ export function LoginForm() {
         className="w-full h-12 bg-[#264f5e] hover:bg-[#1f424e] text-white font-medium rounded-[10px] transition-all"
         disabled={loading}
       >
-        {"Continue with Email"}
+        {"Sign In"}
       </Button>
     </form>
   );

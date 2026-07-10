@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import Sidebar from "@/components/sidebar";
-import Navbar from "@/components/navbar";
 import { Upload, FileText, Download, Folder, File as FileIcon, Image as ImageIcon, Loader2, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -29,7 +27,6 @@ type WorkDriveFile = {
 };
 
 export default function ClientDocumentsPage() {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"workdrive" | "upload">("workdrive");
   
   // WorkDrive State
@@ -187,11 +184,11 @@ export default function ClientDocumentsPage() {
   }
 
   function getFileIcon(extn: string, isFolder?: boolean) {
-    if (isFolder) return <Folder className="w-8 h-8 text-blue-400 fill-blue-100" />;
+    if (isFolder) return <Folder className="w-8 h-8 text-[#264f5e] fill-[#264f5e]/10" />;
     const ext = (extn || "").toLowerCase();
-    if (["jpg", "jpeg", "png", "gif", "svg"].includes(ext)) return <ImageIcon className="w-8 h-8 text-blue-500" />;
+    if (["jpg", "jpeg", "png", "gif", "svg"].includes(ext)) return <ImageIcon className="w-8 h-8 text-[#264f5e]" />;
     if (ext === "pdf") return <FileText className="w-8 h-8 text-red-500" />;
-    if (["doc", "docx"].includes(ext)) return <FileText className="w-8 h-8 text-blue-600" />;
+    if (["doc", "docx"].includes(ext)) return <FileText className="w-8 h-8 text-[#264f5e]" />;
     return <FileIcon className="w-8 h-8 text-gray-500" />;
   }
 
@@ -205,18 +202,11 @@ export default function ClientDocumentsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center justify-between gap-4 px-6 py-3 border-b bg-white shrink-0">
-          <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
-          <div className="max-w-5xl mx-auto space-y-6">
+    <div className="overflow-y-auto p-6 lg:p-8">
+      <div className="space-y-6">
             <header>
               <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Folder className="w-8 h-8 text-blue-600" />
+                <Folder className="w-8 h-8 text-[#264f5e]" />
                 My Documents
               </h1>
               <p className="text-gray-600 mt-2">
@@ -250,7 +240,7 @@ export default function ClientDocumentsPage() {
 
             {/* WorkDrive Tab */}
             {activeTab === "workdrive" && (
-              <div className="bg-white border rounded-2xl p-6 shadow-sm min-h-[400px]">
+              <div className="bg-white border border-gray-100 rounded-3xl p-6 sm:p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)] min-h-[400px]">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-semibold">
@@ -269,7 +259,7 @@ export default function ClientDocumentsPage() {
                     {currentFolderId && (
                       <a
                         href={`/api/workdrive/download?fileId=${currentFolderId}&isFolder=true&folderId=${folderHistory.length > 1 ? folderHistory[folderHistory.length - 2].id : rootFolderId || ''}`}
-                        className="text-sm flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium bg-blue-50 hover:bg-blue-100/85 px-3 py-1.5 rounded-lg transition-colors"
+                        className="text-sm flex items-center gap-1.5 text-[#264f5e] hover:text-[#1f424e] font-medium bg-[#f5f5f7] hover:bg-[#e8e8ed] px-3 py-1.5 rounded-lg transition-colors"
                         download
                       >
                         <Download className="w-4 h-4" />
@@ -285,7 +275,7 @@ export default function ClientDocumentsPage() {
                           fetchWorkDriveFiles();
                         }
                       }}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-sm text-[#264f5e] hover:text-[#1f424e] font-medium"
                     >
                       Refresh
                     </button>
@@ -294,7 +284,7 @@ export default function ClientDocumentsPage() {
 
                 {wdLoading ? (
                   <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                    <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-600" />
+                    <Loader2 className="w-8 h-8 animate-spin mb-4 text-[#264f5e]" />
                     <p>Loading your documents...</p>
                   </div>
                 ) : wdError ? (
@@ -310,9 +300,9 @@ export default function ClientDocumentsPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {wdFiles.map((f) => (
-                      <div key={f.id} className="group relative border rounded-xl p-4 hover:border-blue-300 hover:shadow-md transition-all bg-gray-50 hover:bg-white flex flex-col h-full">
+                      <div key={f.id} className="group relative rounded-2xl border border-gray-100 p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_15px_rgba(0,0,0,0.04)] transition-all bg-white flex flex-col h-full">
                         <div className="flex items-start gap-3 mb-4">
-                          <div className="shrink-0 bg-white p-2 rounded-lg border shadow-sm">
+                          <div className="shrink-0 bg-[#f5f5f7] p-2 rounded-xl">
                             {getFileIcon(f.extn, f.is_folder)}
                           </div>
                           <div className="min-w-0 flex-1">
@@ -325,7 +315,7 @@ export default function ClientDocumentsPage() {
                           </div>
                         </div>
                         
-                        <div className="mt-auto pt-4 border-t flex items-center justify-between">
+                        <div className="mt-auto pt-2 flex items-center justify-between">
                           <span className="text-xs text-gray-500">
                             {f.modified_time ? format(new Date(f.modified_time), "MMM d, yyyy") : ""}
                           </span>
@@ -334,13 +324,13 @@ export default function ClientDocumentsPage() {
                               <div className="flex items-center gap-2 w-full">
                                 <button
                                   onClick={() => handleFolderClick(f)}
-                                  className="inline-flex flex-1 justify-center items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
+                                  className="inline-flex flex-1 justify-center items-center gap-1.5 px-3 py-2 bg-[#f5f5f7] text-[#1d1d1f] text-sm font-medium rounded-xl hover:bg-[#e8e8ed] transition-colors"
                                 >
                                   Open Folder
                                 </button>
                                 <a
                                   href={`/api/workdrive/download?fileId=${f.id}&isFolder=true&folderId=${currentFolderId || ''}`}
-                                  className="inline-flex items-center justify-center p-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                                  className="inline-flex items-center justify-center p-2 bg-white border border-gray-200 text-[#1d1d1f] rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
                                   title="Download Folder ZIP"
                                   download
                                 >
@@ -351,14 +341,14 @@ export default function ClientDocumentsPage() {
                               <>
                                 <button
                                   onClick={() => { setViewingFileId(f.id); setViewingFileName(f.name); }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#f5f5f7] text-[#1d1d1f] text-sm font-medium rounded-xl hover:bg-[#e8e8ed] transition-colors"
                                 >
                                   <Eye className="w-4 h-4" />
                                   View
                                 </button>
                                 <a
                                   href={`/api/workdrive/download?fileId=${f.id}&folderId=${currentFolderId || ''}`}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#264f5e] text-white text-sm font-medium rounded-xl hover:bg-[#1f424e] transition-colors shadow-sm"
                                   download
                                 >
                                   <Download className="w-4 h-4" />
@@ -377,10 +367,10 @@ export default function ClientDocumentsPage() {
 
             {/* Upload Tab */}
             {activeTab === "upload" && (
-              <div className="space-y-6">
-                <section className="bg-white rounded-2xl border p-6 shadow-sm">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <section className="bg-white border border-gray-100 rounded-3xl p-6 sm:p-8 shadow-sm">
                   <h2 className="text-lg font-semibold flex items-center gap-2 mb-6">
-                    <Upload className="w-5 h-5 text-blue-600" />
+                    <Upload className="w-5 h-5 text-[#264f5e]" />
                     Upload a document
                   </h2>
                   {message && (
@@ -415,7 +405,7 @@ export default function ClientDocumentsPage() {
                       <Label className="text-sm font-medium mb-1 block">File</Label>
                       <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                         <div className="mx-auto w-12 h-12 bg-white rounded-full flex items-center justify-center border shadow-sm mb-3">
-                          <Upload className="w-5 h-5 text-blue-600" />
+                          <Upload className="w-5 h-5 text-[#264f5e]" />
                         </div>
                         <div className="text-sm text-gray-700 font-medium">
                           {file ? file.name : "Click to select a file"}
@@ -435,7 +425,7 @@ export default function ClientDocumentsPage() {
                       <button
                         type="submit"
                         disabled={submitting}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#264f5e] text-white font-medium rounded-[10px] hover:bg-[#1f424e] disabled:opacity-50 transition-colors"
                       >
                         {submitting ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
@@ -445,7 +435,7 @@ export default function ClientDocumentsPage() {
                   </form>
                 </section>
 
-                <section className="bg-white rounded-2xl border p-6 shadow-sm">
+                <section className="bg-white border border-gray-100 rounded-3xl p-6 sm:p-8 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                   <h2 className="text-lg font-semibold mb-6">Submitted Documents</h2>
                   {loading ? (
                     <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -461,7 +451,7 @@ export default function ClientDocumentsPage() {
                         <li key={d.id} className="flex items-center justify-between border rounded-xl p-4 bg-gray-50 hover:bg-white transition-colors">
                           <div className="flex items-center gap-3">
                             <div className="bg-white p-2 rounded-lg border shadow-sm shrink-0">
-                              <FileText className="w-5 h-5 text-blue-600" />
+                              <FileText className="w-5 h-5 text-[#264f5e]" />
                             </div>
                             <div>
                               <div className="font-medium text-gray-900">{d.title}</div>
@@ -475,7 +465,7 @@ export default function ClientDocumentsPage() {
                           <div className="flex items-center gap-2">
                             <button 
                               onClick={() => openDoc(d.id)} 
-                              className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                              className="px-3 py-1.5 text-sm font-medium text-[#264f5e] bg-[#264f5e]/10 rounded-lg hover:bg-[#264f5e]/20 transition-colors"
                             >
                               Open
                             </button>
@@ -550,8 +540,6 @@ export default function ClientDocumentsPage() {
             </Dialog>
 
           </div>
-        </main>
-      </div>
     </div>
   );
 }

@@ -1,28 +1,25 @@
 import type React from "react";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import DashboardShell from "./dashboard-shell";
 
 export default async function MgDashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const supabase = await createServerSupabaseClient();
 
-  // Get authenticated user from cookies/session
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (user) {
     try {
-      // Check if profile exists
       const { data: existing, error: selectError } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", user.id)
         .maybeSingle();
 
-      // If not exists, create a minimal profile, but avoid duplicate email conflicts
       if (!existing && !selectError) {
-        // Check for any profile with the same email to avoid unique constraint violation
         const { data: emailExisting, error: emailSelectError } = await supabase
           .from("profiles")
           .select("id")
@@ -41,13 +38,9 @@ export default async function MgDashboardLayout({
               role: "client",
             },
           ]);
-          // Silently ignore insert errors to avoid blocking navigation
           if (insertError) {
             console.warn("[ensureProfileExists] insert skipped due to constraint:", insertError.message);
           }
-        } else {
-          // Profile with same email exists; skip creating to avoid duplicate key error
-          // Optionally, we could sync metadata here if needed
         }
       }
     } catch (err) {
@@ -55,5 +48,5 @@ export default async function MgDashboardLayout({
     }
   }
 
-  return <>{children}</>;
+  return <DashboardShell>{children}</DashboardShell>;
 }

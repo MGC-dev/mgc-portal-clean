@@ -42,12 +42,12 @@ export default function LogoutButton() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <LoadingOverlay show={loading} label="Signing you out..." variant="default" />
       <button
         onClick={onLogout}
         disabled={loading}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        className="w-full inline-flex justify-center items-center gap-2 px-3 py-2 rounded-[8px] bg-[#264f5e] text-white hover:bg-[#1f424e] text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
         title="Sign out"
       >
         <LogOut size={16} />

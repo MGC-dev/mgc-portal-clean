@@ -30,8 +30,8 @@ const navItems = [
     exact: true,
   },
   {
-    label: "Client Documents",
-    href: "/admin/client-documents",
+    label: "Clients",
+    href: "/admin/clients",
     icon: FolderOpen,
   },
   {

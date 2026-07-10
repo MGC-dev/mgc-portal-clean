@@ -38,9 +38,9 @@ const quickActions = [
     color: "bg-amber-50 text-amber-600",
   },
   {
-    label: "Client Documents",
+    label: "Clients",
     desc: "WorkDrive documents & files",
-    href: "/admin/client-documents",
+    href: "/admin/clients",
     icon: FolderOpen,
     color: "bg-sky-50 text-sky-600",
   },

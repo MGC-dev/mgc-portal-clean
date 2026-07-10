@@ -161,6 +161,36 @@ export async function getBiginContactIdByEmail(email: string): Promise<string | 
   return data.data[0].id || null;
 }
 
+export async function getAllSignedBiginContacts(): Promise<any[]> {
+  const token = await getBiginAccessToken();
+
+  // Explicitly request the Signed field — Bigin doesn't return custom fields by default
+  const fields = "id,Full_Name,First_Name,Last_Name,Email,Phone,Account_Name,Signed,Zoho_Workdrive_ID,WorkDrive_Folder_ID";
+  const res = await fetch(`${ZOHO_BIGIN_BASE}/Contacts?fields=${encodeURIComponent(fields)}`, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+  });
+
+  if (res.status === 204) return [];
+  
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Failed to fetch Bigin contacts: ${res.status} - ${text}`);
+
+  const data = JSON.parse(text);
+  if (!data.data) return [];
+
+  // Log the raw first contact so we can see what field names Bigin returns
+  if (data.data.length > 0) {
+    console.log("[Bigin] First contact keys:", Object.keys(data.data[0]));
+    console.log("[Bigin] First contact:", JSON.stringify(data.data[0]));
+  }
+
+  // Filter for Signed == true. Bigin returns booleans as actual booleans.
+  return data.data.filter((c: any) => {
+    const signed = c.Signed ?? c.Signed_Agreement ?? c.signed;
+    return signed === true || signed === "true" || signed === "Yes" || signed === 1;
+  });
+}
+
 export async function updateBiginContactWorkdriveId(contactId: string, folderId: string): Promise<void> {
   const token = await getBiginAccessToken();
   const res = await fetch(`${ZOHO_BIGIN_BASE}/Contacts`, {
