@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { hashCode } from "@/lib/otp-store";
 import { createAdminSupabaseClient } from "@/lib/supabase-server";
 import { Resend } from "resend";
@@ -131,51 +133,52 @@ export async function POST(request: Request) {
         if (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
           const resend = new Resend(process.env.RESEND_API_KEY);
           const clientName = (meta.full_name || "Client") as string;
+          const logo = await readFile(path.join(process.cwd(), "public", "logo.png"));
+          const portalUrl = `${(process.env.NEXT_PUBLIC_SITE_URL || "https://mgconsultingfirm.com").replace(/\/$/, "")}/login`;
           
           const html = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; line-height: 1.6;">
-              
-              <div style="text-align: center; margin-bottom: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
-                <h1 style="color: #2c3e50; font-size: 24px; margin: 0;">🏢 MG Consulting Firm LLC</h1>
+            <div style="margin:0;background:#f6f9fb;padding:32px 16px;font-family:Arial,sans-serif;color:#1a3340;">
+              <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e8eef1;border-radius:14px;overflow:hidden;">
+                <div style="background:#264f5e;padding:24px;text-align:center;">
+                  <img src="cid:mg-logo" alt="MG Consulting Firm" style="width:72px;height:72px;object-fit:contain;background:#fff;border-radius:12px;padding:6px;">
+                  <h1 style="color:#fff;font-size:22px;margin:14px 0 0;">MG Consulting Firm</h1>
+                </div>
+                <div style="padding:32px;">
+                  <h2 style="color:#1a3340;font-size:22px;margin:0 0 16px;">Welcome to your Client Portal</h2>
+                  <p style="color:#4a6672;line-height:1.6;margin:0 0 16px;">Hi ${clientName},</p>
+                  <p style="color:#4a6672;line-height:1.6;margin:0 0 20px;">Your account has been successfully created. The MG Consulting Client Portal gives you one convenient place to manage your engagement with our team.</p>
+                  <div style="background:#f0f7f9;border-left:4px solid #264f5e;border-radius:8px;padding:16px 18px;margin:20px 0;">
+                    <p style="color:#1a3340;font-weight:bold;margin:0 0 10px;">Inside the portal, you can:</p>
+                    <ul style="color:#4a6672;line-height:1.8;margin:0;padding-left:20px;">
+                      <li>Access and upload documents</li>
+                      <li>Review and sign contracts</li>
+                      <li>Browse resources, guides, and templates</li>
+                      <li>Book appointments with our consultants</li>
+                      <li>View invoices and payment history</li>
+                      <li>Update your company details and contact information</li>
+                      <li>Submit questions and support requests</li>
+                    </ul>
+                  </div>
+                  <div style="text-align:center;margin:28px 0;">
+                    <a href="${portalUrl}" style="display:inline-block;background:#264f5e;color:#fff;text-decoration:none;padding:14px 24px;border-radius:9px;font-weight:bold;">Sign in to the Client Portal</a>
+                  </div>
+                  <p style="color:#4a6672;line-height:1.6;margin:0 0 20px;">We look forward to working with you.</p>
+                  <p style="color:#4a6672;line-height:1.6;margin:0;">Best regards,<br><strong style="color:#1a3340;">MG Consulting Firm Team</strong></p>
+                </div>
               </div>
-
-              <h2 style="color: #2c3e50; font-size: 20px; margin: 0 0 15px 0;">Welcome ${clientName}!</h2>
-              
-              <p style="margin: 0 0 15px 0; color: #333;">We are thrilled to welcome you to MG Consulting Firm LLC! We're excited to partner with you and help your organization achieve its goals.</p>
-              
-              <p style="margin: 0 0 20px 0; color: #333;">To ensure a smooth start, we'd like to invite you to schedule your onboarding session.</p>
-              
-              <div style="background-color: #e8f4f8; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #2c3e50; font-size: 18px; margin: 0 0 10px 0;">👋 Meet Melissa Houser</h3>
-                <p style="margin: 0; color: #333;">During your onboarding session, you'll meet with Melissa Houser, our Principal Consultant. Melissa brings extensive experience to guide you through our consulting framework.</p>
-              </div>
-              
-              <div style="text-align: center; margin: 25px 0;">
-                <a href="https://calendly.com/mgconsultingfirm/15min" style="display: inline-block; background-color: #3498db; color: white; text-decoration: none; padding: 15px 30px; border-radius: 5px; font-weight: bold; font-size: 16px;">📅 Schedule Your Onboarding</a>
-              </div>
-              
-              <h3 style="color: #2c3e50; font-size: 18px; margin: 20px 0 10px 0;">What We'll Cover:</h3>
-              <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #333;">
-                <li>Our consulting framework and approach</li>
-                <li>Your goals and desired outcomes</li>
-                <li>Key milestones for our engagement</li>
-                <li>Any questions you may have</li>
-              </ul>
-              
-              <p style="margin: 20px 0 0 0; color: #333;">We look forward to connecting with you soon!</p>
-              
-              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                <p style="margin: 0; color: #666;">Best regards,<br><strong>The MG Consulting Team</strong></p>
-              </div>
-              
             </div>
           `;
           
           await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL,
+            from: `MG Consulting Firm <${process.env.RESEND_FROM_EMAIL}>`,
             to: normalizedEmail,
-            subject: "Welcome to MG Consulting Firm – Schedule Your Onboarding",
+            subject: "Welcome to the MG Consulting Client Portal",
             html,
+            attachments: [{
+              filename: "logo.png",
+              content: logo.toString("base64"),
+              contentId: "mg-logo",
+            }],
           });
         }
       } catch (e) {
