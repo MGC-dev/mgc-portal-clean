@@ -25,8 +25,14 @@ import {
 type User = {
   id: string;
   email: string;
-  profile?: { full_name?: string };
+  profile?: { full_name?: string; company_name?: string };
 };
+
+// Clients are listed by their company (Bigin Account_Name), falling back to the
+// contact's own name and finally their email.
+function clientDisplayName(user: User) {
+  return user.profile?.company_name || user.profile?.full_name || user.email;
+}
 
 type WorkDriveItem = {
   id: string;
@@ -125,7 +131,13 @@ export default function AdminClientDocumentsPage() {
           id: c.id,
           email: c.Email || "",
           profile: {
-            full_name: c.Full_Name || `${c.First_Name || ""} ${c.Last_Name || ""}`.trim() || c.Account_Name || "Unknown Client"
+            full_name: c.Full_Name || `${c.First_Name || ""} ${c.Last_Name || ""}`.trim() || "Unknown Client",
+            // Bigin returns Account_Name as a lookup object ({ id, name }) on
+            // some endpoints and as a plain string on others.
+            company_name:
+              typeof c.Account_Name === "string"
+                ? c.Account_Name
+                : c.Account_Name?.name || "",
           }
         })).filter((u: User) => !!u.email); // Must have email to load WorkDrive folder
         setUsers(mapped);
@@ -231,7 +243,7 @@ export default function AdminClientDocumentsPage() {
   async function createRootFolder() {
     if (!selectedUser) return;
     
-    const folderName = selectedUser.profile?.full_name || selectedUser.email;
+    const folderName = clientDisplayName(selectedUser);
     setIsCreatingFolder(true);
     try {
       const res = await authedFetch("/api/admin/workdrive/folders", {
@@ -329,6 +341,7 @@ export default function AdminClientDocumentsPage() {
     const q = userSearch.toLowerCase();
     return (
       u.email.toLowerCase().includes(q) ||
+      (u.profile?.company_name || "").toLowerCase().includes(q) ||
       (u.profile?.full_name || "").toLowerCase().includes(q)
     );
   });
@@ -389,7 +402,7 @@ export default function AdminClientDocumentsPage() {
                   }`}
                 >
                   <div className={`font-semibold text-sm truncate ${selectedUser?.id === user.id ? "text-white" : "text-[#1a3340]"}`}>
-                    {user.profile?.full_name || "Unnamed User"}
+                    {clientDisplayName(user)}
                   </div>
                   <div className={`text-[11px] truncate mt-0.5 ${selectedUser?.id === user.id ? "text-white/70" : "text-[#6b8a96]"}`}>{user.email}</div>
                 </button>
@@ -433,7 +446,7 @@ export default function AdminClientDocumentsPage() {
                   <Folder className="w-10 h-10 text-[#264f5e]/40" />
                 </div>
                 <p className="text-sm text-center max-w-sm">
-                  No WorkDrive folder has been assigned to <span className="font-semibold text-[#1a3340]">{selectedUser.profile?.full_name || selectedUser.email}</span> yet.
+                  No WorkDrive folder has been assigned to <span className="font-semibold text-[#1a3340]">{clientDisplayName(selectedUser)}</span> yet.
                 </p>
                 <button
                   onClick={createRootFolder}
@@ -459,7 +472,7 @@ export default function AdminClientDocumentsPage() {
                       className="flex items-center gap-1.5 hover:text-[#264f5e] transition-colors shrink-0 bg-[#f6f9fb] px-2.5 py-1 rounded-lg"
                     >
                       <Home className="w-3.5 h-3.5" />
-                      <span>{selectedUser.profile?.full_name || selectedUser.email}</span>
+                      <span>{clientDisplayName(selectedUser)}</span>
                     </button>
                     {folderHistory.map((folder, idx) => (
                       <span key={folder.id} className="flex items-center shrink-0">

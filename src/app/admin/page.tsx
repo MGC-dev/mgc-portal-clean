@@ -30,13 +30,13 @@ const quickActions = [
     icon: BookOpen,
     color: "bg-violet-50 text-violet-600",
   },
-  {
-    label: "Contracts",
-    desc: "Review & send agreements",
-    href: "/admin/contracts",
-    icon: FileText,
-    color: "bg-amber-50 text-amber-600",
-  },
+  // {
+  //   label: "Contracts",
+  //   desc: "Review & send agreements",
+  //   href: "/admin/contracts",
+  //   icon: FileText,
+  //   color: "bg-amber-50 text-amber-600",
+  // },
   {
     label: "Clients",
     desc: "WorkDrive documents & files",

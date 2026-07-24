@@ -50,7 +50,7 @@ Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for aut
 | ------------------ | ----------------------------------------------------------------------- |
 | **Supabase**       | Auth, Postgres database, Storage buckets, Row Level Security            |
 | **Zoho Sign**      | Embedded contract e‑signature workflow                                  |
-| **Zoho WorkDrive** | Per‑client document folders, auto‑created on signup                     |
+| **Zoho WorkDrive** | Per‑client document folders, auto‑created once a client is marked Signed |
 | **Zoho Bigin/CRM** | Client records; leads created from voice calls                          |
 | **Calendly**       | Appointment scheduling and webhook sync                                 |
 | **Retell**         | Voice‑AI webhook that creates/updates Zoho CRM leads from call metadata |
@@ -199,7 +199,8 @@ All endpoints live under `src/app/api/**`. Highlights:
 - **Registration & onboarding**
   1. Client submits the registration form.
   2. A one‑time code is emailed (Resend); the client verifies at `/register/verify` via `POST /api/auth/verify-otp`.
-  3. On successful verification, a **WorkDrive folder** is auto‑created and a **Bigin/CRM** record is set up for the client, followed by a welcome email.
+  3. On successful verification, the profile is created and a welcome email is sent.
+  4. The client's **WorkDrive folder** is provisioned later — once they are marked **Signed** in Bigin, the next load of the admin Clients tab (`GET /api/admin/clients`) creates a folder named after their company and links its ID back to the Bigin contact.
 
 - **Login** — credentials post to `/api/auth/login`; on success the client lands on `/mgdashboard` (admins are redirected to `/admin`).
 

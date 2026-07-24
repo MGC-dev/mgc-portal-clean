@@ -34,11 +34,11 @@ const navItems = [
     href: "/admin/clients",
     icon: FolderOpen,
   },
-  {
-    label: "Contracts",
-    href: "/admin/contracts",
-    icon: FileText,
-  },
+  // {
+  //   label: "Contracts",
+  //   href: "/admin/contracts",
+  //   icon: FileText,
+  // },
   {
     label: "Resource Library",
     href: "/admin/resources",

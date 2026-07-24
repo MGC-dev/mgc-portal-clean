@@ -191,6 +191,86 @@ export async function getAllSignedBiginContacts(): Promise<any[]> {
   });
 }
 
+/**
+ * Company name for a Bigin contact. Account_Name comes back as a lookup object
+ * ({ id, name }) on some endpoints and as a plain string on others.
+ */
+export function getBiginCompanyName(contact: any): string {
+  const account = contact?.Account_Name;
+  const company = typeof account === "string" ? account : account?.name;
+  return (
+    company ||
+    contact?.Full_Name ||
+    `${contact?.First_Name || ""} ${contact?.Last_Name || ""}`.trim() ||
+    contact?.Email ||
+    ""
+  );
+}
+
+export function getBiginContactFolderId(contact: any): string | null {
+  const folderId =
+    contact?.Zoho_Workdrive_ID || contact?.WorkDrive_Folder_ID || contact?.["WorkDrive Folder ID"];
+  return folderId ? String(folderId) : null;
+}
+
+// WorkDrive happily creates two folders with the same name (it just appends a
+// timestamp), so the only thing preventing duplicates is the folder ID stored on
+// the Bigin contact. Overlapping requests — two admins, a double refresh, React
+// strict-mode's double fetch — can all race that write, so provisioning per
+// contact is deduped in-process while it is in flight.
+const inFlightFolderProvisioning = new Map<string, Promise<string | null>>();
+
+/**
+ * Make sure a signed client has a root WorkDrive folder, creating it (named
+ * after their company) and linking it back to Bigin the first time.
+ *
+ * Idempotent: contacts that already carry a folder ID are returned untouched.
+ * Returns the folder ID, or null if it could not be provisioned.
+ */
+export async function ensureClientRootFolder(contact: any): Promise<string | null> {
+  const existing = getBiginContactFolderId(contact);
+  if (existing) return existing;
+
+  if (!contact?.id) return null;
+
+  const pending = inFlightFolderProvisioning.get(contact.id);
+  if (pending) return pending;
+
+  const provisioning = provisionClientRootFolder(contact).finally(() => {
+    inFlightFolderProvisioning.delete(contact.id);
+  });
+  inFlightFolderProvisioning.set(contact.id, provisioning);
+
+  return provisioning;
+}
+
+async function provisionClientRootFolder(contact: any): Promise<string | null> {
+  const parentFolderId = process.env.NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID;
+  if (!parentFolderId) {
+    console.warn("[workdrive] NEXT_PUBLIC_WORKDRIVE_CLIENT_DOCUMENTS_FOLDER_ID is not set; skipping folder provisioning.");
+    return null;
+  }
+
+  const folderName = getBiginCompanyName(contact);
+  if (!folderName) return null;
+
+  // Re-read from Bigin so a folder linked by another process (or an earlier
+  // request whose write landed after our list was fetched) is not duplicated.
+  if (contact.Email) {
+    const linked = await getClientFolderIdFromBigin(contact.Email);
+    if (linked) return linked;
+  }
+
+  const newFolder = await createWorkDriveFolder(parentFolderId, folderName);
+  const newFolderId: string | undefined = newFolder?.id;
+  if (!newFolderId) return null;
+
+  await updateBiginContactWorkdriveId(contact.id, newFolderId);
+  console.log(`[workdrive] Provisioned folder "${folderName}" (${newFolderId}) for signed client ${contact.Email || contact.id}`);
+
+  return newFolderId;
+}
+
 export async function updateBiginContactWorkdriveId(contactId: string, folderId: string): Promise<void> {
   const token = await getBiginAccessToken();
   const res = await fetch(`${ZOHO_BIGIN_BASE}/Contacts`, {
