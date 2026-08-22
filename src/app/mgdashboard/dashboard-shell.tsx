@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Sidebar from "@/components/sidebar";
+import Topbar from "./Topbar";
 import { Menu } from "lucide-react";
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#f5f5f7] text-gray-900">
+    <div className="flex h-screen bg-white text-gray-900">
       {/* Sidebar — always mounted, never torn down on navigation */}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -31,8 +32,13 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           <Menu size={18} />
         </button>
 
+        {/* Top bar — occupies the strip level with the sidebar logo block
+            (py-4 + 47px badge + py-4 = 79px), so page content still begins
+            exactly where the logo ends. */}
+        <Topbar />
+
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-[#f5f5f7]">
+        <main className="flex-1 overflow-y-auto pt-6 bg-[rgba(217,217,217,0.10)] md:rounded-tl-[26px]">
           {children}
         </main>
       </div>

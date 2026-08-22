@@ -2,10 +2,10 @@
 
 A business‑management web application for **MG Consulting** clients and administrators.
 
-- **Clients** register, verify by email, subscribe to service tiers, book appointments, sign contracts, upload/download documents, and raise support requests.
+- **Clients** register, verify by email, subscribe to service tiers, sign contracts, upload/download documents, and raise support requests.
 - **Administrators** manage users and roles, upload resources and contracts, review client documents, run the contract‑signing workflow, and manage a shared WorkDrive.
 
-Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for authentication, database, and storage, and deep integrations across the **Zoho** suite (Sign, WorkDrive, Bigin/CRM), **Calendly** scheduling, **Retell** voice AI, and **Resend** transactional email.
+Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for authentication, database, and storage, and deep integrations across the **Zoho** suite (Sign, WorkDrive, Bigin/CRM), **Retell** voice AI, and **Resend** transactional email.
 
 ---
 
@@ -52,7 +52,6 @@ Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for aut
 | **Zoho Sign**      | Embedded contract e‑signature workflow                                  |
 | **Zoho WorkDrive** | Per‑client document folders, auto‑created once a client is marked Signed |
 | **Zoho Bigin/CRM** | Client records; leads created from voice calls                          |
-| **Calendly**       | Appointment scheduling and webhook sync                                 |
 | **Retell**         | Voice‑AI webhook that creates/updates Zoho CRM leads from call metadata |
 | **Resend**         | Transactional email (verification codes, welcome, support)             |
 
@@ -103,7 +102,7 @@ Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for aut
   - Server client — `createServerSupabaseClient` (`supabase-server.ts`)
   - Admin client (service role, server‑only) — `createAdminSupabaseClient` (`supabase-server.ts`)
   - Cookie adapter — `supabase-cookies.ts`
-- **Domain helpers** (`src/lib`): `zoho.ts` (Sign), `zoho-workdrive.ts` (WorkDrive), `appointments.ts` / `scheduling.ts` (Calendly), `resources.ts`, `otp-store.ts` (email verification codes), `auth-fetch.ts` (authenticated client fetch).
+- **Domain helpers** (`src/lib`): `zoho.ts` (Sign), `zoho-workdrive.ts` (WorkDrive), `appointments.ts` / `scheduling.ts` (appointments), `resources.ts`, `otp-store.ts` (email verification codes), `auth-fetch.ts` (authenticated client fetch).
 
 ## Authentication & RBAC
 
@@ -138,13 +137,12 @@ To promote a user to admin, set `profiles.role = 'admin'` (or add an `admin` row
 | `/register/verify`           | Email OTP verification                   |
 | `/register/forgotpassword`   | Password reset request                   |
 | `/suspended`                 | Shown to suspended accounts              |
-| `/book`, `/book/[handle]/[event]` | Public Calendly‑backed booking      |
 
 ### Client dashboard (`/mgdashboard`)
 | Route                        | Purpose                                  |
 | ---------------------------- | ---------------------------------------- |
 | `/mgdashboard`               | Overview & quick actions                 |
-| `/mgdashboard/appointments`  | Appointments (Calendly)                  |
+| `/mgdashboard/meetings`      | Meeting summaries & notes                |
 | `/mgdashboard/contracts`     | Contracts & e‑signing (Zoho Sign)        |
 | `/mgdashboard/documents`     | Upload & manage client documents         |
 | `/mgdashboard/resources`     | Shared resources                         |
@@ -180,9 +178,11 @@ All endpoints live under `src/app/api/**`. Highlights:
 
 **Admin** — `/api/admin/users` · `/api/admin/clients` · `/api/admin/contracts` (+ `/upload`, `/[id]/link-zoho`) · `/api/admin/client-documents` · `/api/admin/resources/upload` · `/api/admin/support/list` · `/api/admin/suspend-user` · `/api/admin/unsuspend-user` · `/api/admin/delete-user` · `/api/admin/workdrive/*`
 
-**Resources & support** — `/api/resources` · `/api/profile` · `/api/support`, `/api/support/recent`
+**Client tasks** — `GET /api/tasks` (read-only board from the Bigin "MG Client Task Tracker" pipeline, scoped to the signed-in user's contact)
 
-**Scheduling** — `/api/calendly/events` · `/api/calendly/webhook`, `/api/calendly/webhook/register`
+**Meeting summaries** — `POST /api/fireflies/webhook` (Fireflies "Transcription completed" → Claude summary → DOCX → each attending signed client's WorkDrive `Meetings` folder) · `GET /api/meetings/documents` · `GET /api/meetings/download?fileId=`
+
+**Resources & support** — `/api/resources` · `/api/profile` · `/api/support`, `/api/support/recent`
 
 **WorkDrive** — `/api/workdrive/files`, `/api/workdrive/download`
 
@@ -210,8 +210,6 @@ All endpoints live under `src/app/api/**`. Highlights:
   1. An admin uploads a contract PDF to the `contracts` bucket.
   2. `POST /api/contracts/[id]/start-sign` creates or resumes a Zoho Sign request and returns an embedded signing URL when available.
   3. The client signs in‑app; the completed document is stored in the `contracts-signed` bucket and status is tracked via `/api/contracts/[id]/status`.
-
-- **Scheduling** — appointments are booked through Calendly; `/api/calendly/webhook` keeps the portal in sync.
 
 - **Voice‑AI leads (Retell → Zoho CRM)** — `/api/retell-webhook` receives call metadata and creates or updates a matching lead in Zoho CRM (keyed on a Retell call‑ID field).
 
@@ -258,10 +256,11 @@ RESEND_FROM_EMAIL=
 NEXT_PUBLIC_SUPPORT_EMAIL= # or SUPPORT_TO_EMAIL
 ```
 
-**Calendly**
+**Meeting summaries (Fireflies + Claude)**
 ```
-CALENDLY_API_TOKEN=
-NEXT_PUBLIC_CALENDLY_URL=
+FIREFLIES_API_KEY=          # Fireflies GraphQL API key
+FIREFLIES_WEBHOOK_SECRET=   # required — the webhook refuses all requests without it
+ANTHROPIC_API_KEY=          # used to summarise transcripts
 ```
 
 **Misc**
@@ -297,11 +296,10 @@ src/
     admin/**             Admin panel (own layout.tsx)
     mgdashboard/**       Client dashboard (own layout.tsx)
     register/**          Registration + OTP verification + password reset
-    book/**              Public Calendly booking
-    login, suspended, auth, loading-demo
+    login, suspended, auth
   components/
     ui/**                Design-system primitives (button, dialog, table, calendar…)
-    navbar, sidebar, admin-sidebar, *-form, contract-signing-modal, calendly-widget …
+    sidebar, admin-sidebar, *-form, contract-signing-modal …
   hooks/
     use-auth.tsx         Auth context/provider
     use-appointments.tsx Appointment data hook
@@ -328,7 +326,7 @@ supabase-schema.sql      Database schema, RLS policies, buckets
 - Set `SIGN_EMBED_HOST` to your production origin and add that origin to Zoho Sign's **Allowed Domains** for embedded signing.
 - Ensure route handlers that call Zoho run in the **Node.js runtime** (`export const runtime = 'nodejs'`).
 - `next.config.ts` sets `eslint.ignoreDuringBuilds: true`, so lint errors won't block production builds — run `npm run lint` in CI to catch them.
-- Register the Calendly, Zoho, and Retell webhooks against your deployed URLs.
+- Register the Zoho and Retell webhooks against your deployed URLs.
 
 ## Troubleshooting
 

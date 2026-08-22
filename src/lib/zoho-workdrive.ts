@@ -1,11 +1,131 @@
 // src/lib/zoho-workdrive.ts
-import { NextResponse } from "next/server";
 
-// Cache tokens to avoid hitting rate limits
-let biginTokenCache: { accessToken: string; expiresAt: number } | null = null;
-let workDriveTokenCache: { accessToken: string; expiresAt: number } | null = null;
-let workDriveTokenFetchPromise: Promise<string> | null = null;
-let biginTokenFetchPromise: Promise<string> | null = null;
+/**
+ * Zoho rate-limits refresh-token calls per token, and it counts *attempts* —
+ * so retrying while limited pushes the unlock further out. A failed refresh
+ * therefore starts a cooldown during which we don't call Zoho at all: we serve
+ * a still-valid cached token if we have one, and otherwise fail immediately.
+ */
+type TokenState = {
+  cache: { accessToken: string; expiresAt: number } | null;
+  inFlight: Promise<string> | null;
+  cooldownUntil: number;
+  consecutiveFailures: number;
+};
+
+const biginToken: TokenState = { cache: null, inFlight: null, cooldownUntil: 0, consecutiveFailures: 0 };
+const workDriveToken: TokenState = { cache: null, inFlight: null, cooldownUntil: 0, consecutiveFailures: 0 };
+
+/** Raised when Zoho auth is unavailable. Routes turn this into a friendly 503. */
+export class ZohoAuthError extends Error {
+  readonly rateLimited: boolean;
+  readonly retryAfterMs: number;
+  constructor(message: string, opts: { rateLimited: boolean; retryAfterMs: number }) {
+    super(message);
+    this.name = "ZohoAuthError";
+    this.rateLimited = opts.rateLimited;
+    this.retryAfterMs = opts.retryAfterMs;
+  }
+}
+
+function isRateLimited(status: number, body: string): boolean {
+  return (
+    status === 429 ||
+    /too many requests/i.test(body) ||
+    /access denied/i.test(body)
+  );
+}
+
+/** 1, 2, 4… minutes, capped at 15 — long enough for Zoho's window to reset. */
+function cooldownFor(failures: number): number {
+  return Math.min(60_000 * 2 ** Math.max(0, failures - 1), 15 * 60_000);
+}
+
+async function getZohoToken(
+  state: TokenState,
+  label: string,
+  creds: { clientId?: string; clientSecret?: string; refreshToken?: string }
+): Promise<string> {
+  const now = Date.now();
+
+  // A token good for another 10s is good enough.
+  if (state.cache && now < state.cache.expiresAt - 10_000) return state.cache.accessToken;
+
+  // Collapse concurrent refreshes into one call.
+  if (state.inFlight) return state.inFlight;
+
+  if (now < state.cooldownUntil) {
+    // Prefer a token that is stale-ish but not yet expired over failing.
+    if (state.cache && now < state.cache.expiresAt) return state.cache.accessToken;
+    throw new ZohoAuthError(
+      `${label} authorisation is temporarily unavailable (rate limited by Zoho).`,
+      { rateLimited: true, retryAfterMs: state.cooldownUntil - now }
+    );
+  }
+
+  const { clientId, clientSecret, refreshToken } = creds;
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new ZohoAuthError(`${label} OAuth configuration missing.`, {
+      rateLimited: false,
+      retryAfterMs: 0,
+    });
+  }
+
+  state.inFlight = (async () => {
+    try {
+      const params = new URLSearchParams({
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "refresh_token",
+      });
+
+      const res = await fetch(`${ZOHO_AUTH_BASE}/oauth/v2/token?${params.toString()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+      const text = await res.text();
+
+      // Zoho reports rate limiting with a 400 and an error body, not a 429.
+      if (!res.ok || isRateLimited(res.status, text)) {
+        const limited = isRateLimited(res.status, text);
+        if (limited) {
+          state.consecutiveFailures += 1;
+          state.cooldownUntil = Date.now() + cooldownFor(state.consecutiveFailures);
+          console.warn(
+            `[zoho] ${label} token rate limited; backing off for ${Math.round(
+              cooldownFor(state.consecutiveFailures) / 1000
+            )}s (failure #${state.consecutiveFailures})`
+          );
+        }
+        throw new ZohoAuthError(
+          limited
+            ? `${label} authorisation is temporarily unavailable (rate limited by Zoho).`
+            : `${label} token request failed: ${res.status} - ${text}`,
+          { rateLimited: limited, retryAfterMs: limited ? state.cooldownUntil - Date.now() : 0 }
+        );
+      }
+
+      const data = JSON.parse(text);
+      if (!data.access_token) {
+        throw new ZohoAuthError(`${label} returned no access_token.`, {
+          rateLimited: false,
+          retryAfterMs: 0,
+        });
+      }
+
+      const expiresIn = (data.expires_in as number | undefined) ?? 3600;
+      state.cache = { accessToken: data.access_token, expiresAt: Date.now() + expiresIn * 1000 };
+      state.consecutiveFailures = 0;
+      state.cooldownUntil = 0;
+      return data.access_token as string;
+    } finally {
+      state.inFlight = null;
+    }
+  })();
+
+  return state.inFlight;
+}
 
 const ZOHO_REGION = process.env.ZOHO_REGION || "com";
 const ZOHO_AUTH_BASE = `https://accounts.zoho.${ZOHO_REGION}`;
@@ -16,107 +136,33 @@ const ZOHO_BIGIN_BASE = `https://www.zohoapis.${ZOHO_REGION}/bigin/v2`;
 const ZOHO_WORKDRIVE_BASE = `https://workdrive.zoho.${ZOHO_REGION}/api/v1`;
 
 export async function getBiginAccessToken(): Promise<string> {
-  if (biginTokenCache && Date.now() < biginTokenCache.expiresAt - 10000) {
-    return biginTokenCache.accessToken;
-  }
-
-  if (biginTokenFetchPromise) {
-    return biginTokenFetchPromise;
-  }
-
-  biginTokenFetchPromise = (async () => {
-    try {
-      const clientId = process.env.ZOHO_BIGIN_CLIENT_ID || process.env.ZOHO_CLIENT_ID;
-      const clientSecret = process.env.ZOHO_BIGIN_CLIENT_SECRET || process.env.ZOHO_CLIENT_SECRET;
-      const refreshToken = process.env.ZOHO_BIGIN_REFRESH_TOKEN || process.env.ZOHO_REFRESH_TOKEN;
-
-      if (!clientId || !clientSecret || !refreshToken) {
-        throw new Error("Zoho Bigin OAuth configuration missing.");
-      }
-
-      const url = `${ZOHO_AUTH_BASE}/oauth/v2/token`;
-      const params = new URLSearchParams({
-        refresh_token: refreshToken,
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: "refresh_token",
-      });
-
-      const res = await fetch(`${url}?${params.toString()}`, {
-        method: "POST",
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
-
-      const text = await res.text();
-      if (!res.ok) throw new Error(`Zoho Bigin token request failed: ${res.status} - ${text}`);
-
-      const data = JSON.parse(text);
-      if (!data.access_token) throw new Error(`Invalid response: missing access_token`);
-
-      const accessToken = data.access_token as string;
-      const expiresIn = (data.expires_in as number | undefined) ?? 3600;
-
-      biginTokenCache = { accessToken, expiresAt: Date.now() + expiresIn * 1000 };
-      return accessToken;
-    } finally {
-      biginTokenFetchPromise = null;
-    }
-  })();
-
-  return biginTokenFetchPromise;
+  return getZohoToken(biginToken, "Zoho Bigin", {
+    clientId: process.env.ZOHO_BIGIN_CLIENT_ID || process.env.ZOHO_CLIENT_ID,
+    clientSecret: process.env.ZOHO_BIGIN_CLIENT_SECRET || process.env.ZOHO_CLIENT_SECRET,
+    refreshToken: process.env.ZOHO_BIGIN_REFRESH_TOKEN || process.env.ZOHO_REFRESH_TOKEN,
+  });
 }
 
 export async function getWorkDriveAccessToken(): Promise<string> {
-  if (workDriveTokenCache && Date.now() < workDriveTokenCache.expiresAt - 10000) {
-    return workDriveTokenCache.accessToken;
-  }
-
-  if (workDriveTokenFetchPromise) {
-    return workDriveTokenFetchPromise;
-  }
-
-  workDriveTokenFetchPromise = (async () => {
-    try {
-      const clientId = process.env.ZOHO_WORKDRIVE_CLIENT_ID || process.env.ZOHO_CLIENT_ID;
-      const clientSecret = process.env.ZOHO_WORKDRIVE_CLIENT_SECRET || process.env.ZOHO_CLIENT_SECRET;
-      const refreshToken = process.env.ZOHO_WORKDRIVE_REFRESH_TOKEN || process.env.ZOHO_REFRESH_TOKEN;
-
-      if (!clientId || !clientSecret || !refreshToken) {
-        throw new Error("Zoho OAuth configuration missing.");
-      }
-
-      const url = `${ZOHO_AUTH_BASE}/oauth/v2/token`;
-      const params = new URLSearchParams({
-        refresh_token: refreshToken,
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: "refresh_token",
-      });
-
-      const res = await fetch(`${url}?${params.toString()}`, {
-        method: "POST",
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
-
-      const text = await res.text();
-      if (!res.ok) throw new Error(`Zoho token request failed: ${res.status} - ${text}`);
-
-      const data = JSON.parse(text);
-      if (!data.access_token) throw new Error(`Invalid response: missing access_token`);
-
-      const accessToken = data.access_token as string;
-      const expiresIn = (data.expires_in as number | undefined) ?? 3600;
-
-      workDriveTokenCache = { accessToken, expiresAt: Date.now() + expiresIn * 1000 };
-      return accessToken;
-    } finally {
-      workDriveTokenFetchPromise = null;
-    }
-  })();
-
-  return workDriveTokenFetchPromise;
+  return getZohoToken(workDriveToken, "Zoho WorkDrive", {
+    clientId: process.env.ZOHO_WORKDRIVE_CLIENT_ID || process.env.ZOHO_CLIENT_ID,
+    clientSecret: process.env.ZOHO_WORKDRIVE_CLIENT_SECRET || process.env.ZOHO_CLIENT_SECRET,
+    refreshToken: process.env.ZOHO_WORKDRIVE_REFRESH_TOKEN || process.env.ZOHO_REFRESH_TOKEN,
+  });
 }
 
+/**
+ * Message safe to show a client. Upstream provider errors leak vendor names,
+ * status codes and raw JSON — useless to a client and needless detail to
+ * expose. The full error is still logged server-side.
+ */
+export function clientSafeZohoMessage(error: unknown): string {
+  if (error instanceof ZohoAuthError && error.rateLimited) {
+    const mins = Math.max(1, Math.ceil(error.retryAfterMs / 60_000));
+    return `Our document service is busy right now. Please try again in about ${mins} minute${mins === 1 ? "" : "s"}.`;
+  }
+  return "We couldn't reach your documents just now. Please try again shortly.";
+}
 
 /**
  * Find contact in Bigin by Email and return their WorkDrive_Folder_ID
@@ -269,6 +315,44 @@ async function provisionClientRootFolder(contact: any): Promise<string | null> {
   console.log(`[workdrive] Provisioned folder "${folderName}" (${newFolderId}) for signed client ${contact.Email || contact.id}`);
 
   return newFolderId;
+}
+
+// Same race as client root folders: WorkDrive will happily create a second
+// "Meetings" folder rather than reject the duplicate, and two webhooks for the
+// same client can arrive together. Dedupe per parent+name while in flight.
+const inFlightSubfolders = new Map<string, Promise<string | null>>();
+
+/**
+ * Find a subfolder by name under `parentFolderId`, creating it if absent.
+ * Returns the subfolder ID, or null if it could not be created.
+ */
+export async function ensureWorkDriveSubfolder(
+  parentFolderId: string,
+  folderName: string
+): Promise<string | null> {
+  const key = `${parentFolderId}::${folderName.toLowerCase()}`;
+  const pending = inFlightSubfolders.get(key);
+  if (pending) return pending;
+
+  const provisioning = (async () => {
+    const items = await listWorkDriveFolder(parentFolderId);
+    const existing = items.find(
+      (item: any) => item.is_folder && String(item.name).toLowerCase() === folderName.toLowerCase()
+    );
+    if (existing) return String(existing.id);
+
+    const created = await createWorkDriveFolder(parentFolderId, folderName);
+    const createdId: string | undefined = created?.id;
+    if (!createdId) return null;
+
+    console.log(`[workdrive] Created "${folderName}" folder (${createdId}) under ${parentFolderId}`);
+    return String(createdId);
+  })().finally(() => {
+    inFlightSubfolders.delete(key);
+  });
+
+  inFlightSubfolders.set(key, provisioning);
+  return provisioning;
 }
 
 export async function updateBiginContactWorkdriveId(contactId: string, folderId: string): Promise<void> {

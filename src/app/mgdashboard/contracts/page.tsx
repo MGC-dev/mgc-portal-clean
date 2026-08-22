@@ -126,11 +126,11 @@ export default function ContractsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8">
+    <div className="px-4 sm:px-8 pb-8">
       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Contracts & Agreements</h2>
 
           {/* Outer card */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8">
+          <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8">
             <h3 className="text-md sm:text-lg font-semibold mb-3 sm:mb-4">Active Contracts</h3>
 
             {pageBanner && (
@@ -154,7 +154,7 @@ export default function ContractsPage() {
               {contracts.map((c) => (
                 <div
                   key={c.id}
-                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-5 gap-4"
+                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white rounded-2xl border border-black/[0.07] p-5 gap-4"
                 >
                   {/* Left: icon + info */}
                   <div className="flex items-start gap-3">

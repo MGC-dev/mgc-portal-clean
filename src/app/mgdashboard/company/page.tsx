@@ -119,7 +119,7 @@ export default function CompanyProfilePage() {
     "w-full mt-1.5 bg-[#f5f5f7] border border-transparent rounded-xl px-4 py-2.5 text-[15px] text-gray-400 cursor-not-allowed";
 
   return (
-    <div className="p-6 sm:p-8">
+    <div className="px-6 sm:px-8 pb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -145,7 +145,7 @@ export default function CompanyProfilePage() {
       {loading ? (
         /* Inline skeleton — stays inside the content area */
         <div className="space-y-4 animate-pulse">
-          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 flex items-center gap-5">
+          <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 flex items-center gap-5">
             <div className="w-16 h-16 rounded-full bg-gray-200 shrink-0" />
             <div className="flex-1 space-y-2">
               <div className="h-4 bg-gray-200 rounded w-1/3" />
@@ -154,7 +154,7 @@ export default function CompanyProfilePage() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[0, 1].map((i) => (
-              <div key={i} className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 space-y-4">
+              <div key={i} className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 space-y-4">
                 <div className="h-4 bg-gray-200 rounded w-1/3" />
                 {[0, 1, 2].map((j) => (
                   <div key={j} className="space-y-1.5">
@@ -169,7 +169,7 @@ export default function CompanyProfilePage() {
       ) : (
         <div className="space-y-4">
           {/* Profile Header Card */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8 flex items-center gap-5">
+          <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 flex items-center gap-5">
             <div className="w-16 h-16 rounded-full bg-[#264f5e] flex items-center justify-center text-white text-xl font-semibold shrink-0 select-none">
               {initials}
             </div>
@@ -183,7 +183,7 @@ export default function CompanyProfilePage() {
           {/* Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Company Information */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8">
+            <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8">
               <h2 className="flex items-center gap-2.5 font-semibold text-[15px] text-[#1d1d1f] mb-5">
                 <div className="w-7 h-7 rounded-lg bg-[#264f5e]/10 flex items-center justify-center">
                   <Building2 size={15} className="text-[#264f5e]" />
@@ -234,7 +234,7 @@ export default function CompanyProfilePage() {
             </div>
 
             {/* Account Information */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8 h-fit">
+            <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 h-fit">
               <h2 className="flex items-center gap-2.5 font-semibold text-[15px] text-[#1d1d1f] mb-5">
                 <div className="w-7 h-7 rounded-lg bg-[#264f5e]/10 flex items-center justify-center">
                   <User size={15} className="text-[#264f5e]" />

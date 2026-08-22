@@ -9,7 +9,7 @@ export default function Subscribe() {
   const [selectedPlan, setSelectedPlan] = useState<{ name: string; price: string } | null>(null);
 
   return (
-    <div className="p-6">
+    <div className="px-6 pb-6">
       <h1 className="text-2xl font-bold mb-6">Product Subscriptions</h1>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Starter */}
@@ -106,7 +106,7 @@ function PlanCard({
   onSubscribe: (plan: { name: string; price: string }) => void;
 }) {
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8 flex flex-col justify-between hover:shadow-[0_4px_15px_rgba(0,0,0,0.04)] transition-all">
+    <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 flex flex-col justify-between hover:border-black/[0.14] transition-colors">
       <div>
         <div className="flex items-center gap-2 mb-4">
           <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full bg-${color}-100`}>

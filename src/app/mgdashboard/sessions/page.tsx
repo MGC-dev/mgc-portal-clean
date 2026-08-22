@@ -15,11 +15,11 @@ const recaps = [
 
 export default function SessionRecapsPage() {
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="px-4 sm:px-6 lg:px-8 pb-8">
       <h2 className="text-xl sm:text-2xl font-bold mb-6">Session Recaps</h2>
 
           {/* Outer Card */}
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8">
+          <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8">
             <h3 className="text-md sm:text-lg font-semibold mb-4">
               Recent Sessions
             </h3>
@@ -28,7 +28,7 @@ export default function SessionRecapsPage() {
               {recaps.map((r) => (
                 <div
                   key={r.id}
-                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-5 gap-4"
+                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white rounded-2xl border border-black/[0.07] p-5 gap-4"
                 >
                   {/* Left: icon + info */}
                   <div className="flex items-start gap-3">

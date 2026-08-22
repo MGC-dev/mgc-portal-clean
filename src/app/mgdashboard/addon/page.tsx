@@ -3,7 +3,7 @@ import { useState } from "react";
 
 export default function ServiceAddOns() {
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="px-4 sm:px-6 lg:px-8 pb-8">
       {/* Main content */}
         <main className="flex-1 flex flex-col">
           {/* Topbar */}
@@ -73,7 +73,7 @@ function AddOnCard({
   available: boolean;
 }) {
   return (
-    <div className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8 flex flex-col justify-between">
+    <div className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 flex flex-col justify-between">
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-semibold">{title}</h2>

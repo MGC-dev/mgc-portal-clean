@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { getUserAppointments, type Appointment } from "@/lib/appointments";
-import { createClient } from "@/lib/supabase";
 
 export function useAppointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -19,35 +18,7 @@ export function useAppointments() {
       if (error) {
         setError(error);
       } else {
-        let base = data || [];
-
-        // Try to merge Calendly events for the current user's email (optional)
-        try {
-          const supabase = createClient();
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-          const email = user?.email;
-          if (email) {
-            const resp = await fetch(`/api/calendly/events?email=${encodeURIComponent(email)}`);
-            if (resp.ok) {
-              const json = await resp.json();
-              const calEvents: Appointment[] = json?.data || [];
-
-              // Deduplicate by start_time+title combo
-              const byKey = new Map<string, Appointment>();
-              [...base, ...calEvents].forEach((apt) => {
-                const key = `${apt.start_time}|${apt.title}`;
-                if (!byKey.has(key)) byKey.set(key, apt);
-              });
-              base = Array.from(byKey.values());
-            }
-          }
-        } catch (mergeErr) {
-          // Ignore Calendly merge errors; keep Supabase data
-        }
-
-        setAppointments(base);
+        setAppointments(data || []);
       }
     } catch (err) {
       setError("Failed to fetch appointments");

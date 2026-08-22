@@ -36,7 +36,7 @@ const menuGroups: MenuGroup[] = [
   },
   {
     items: [
-      { name: "Appointments", href: "/mgdashboard/appointments", icon: Calendar },
+      { name: "Meetings", href: "/mgdashboard/meetings", icon: Calendar },
     ],
   },
   {
@@ -74,31 +74,39 @@ export default function Sidebar({
 
       {/* Sidebar */}
       <div
-        className={`fixed z-50 top-0 left-0 h-full w-64 bg-[#f5f5f7] border-r border-[#e5e5e5] flex flex-col transform transition-transform duration-300
+        className={`fixed z-50 top-0 left-0 h-full w-64 bg-white flex flex-col transform transition-transform duration-300
         ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:static md:flex`}
         role="navigation"
         aria-label="Primary"
       >
-        {/* Logo / Brand header */}
-        <div className="flex items-center gap-3 px-4 pt-5 pb-4 bg-[#264f5e]">
-          <div className="shrink-0 flex items-center justify-center">
+        {/* Logo / Brand header.
+            The artwork is a full lockup — it already reads "MG Consulting Firm" —
+            so the only text beside it is "Client Portal"; a typed company name
+            here duplicated what the logo already says.
+            logo-brand.png rather than logo.png: the original ships an opaque
+            #2f4553 field (a desaturated slate, ΔE 6.4 from the brand colour) and
+            is tagged Display P3, so it could never sit flush on a #264f5e panel.
+            logo-brand.png is the same artwork recomposited onto the brand colour
+            and written as plain sRGB, so it matches the round badge exactly.
+            See scripts note in the commit — the original logo.png is untouched. */}
+        <div className="flex items-center gap-3 px-4 py-4">
+          <span className="w-[47px] h-[47px] rounded-full bg-[#264f5e] flex items-center justify-center overflow-hidden shrink-0">
             <Image
-              src="/logo.png"
-              alt="MG Consulting logo"
-              width={32}
-              height={32}
+              src="/logo-brand.png"
+              alt="MG Consulting Firm"
+              width={60}
+              height={47}
               priority
-              style={{ objectFit: "contain" }}
+              /* The default lossy WebP re-encode leaves compression noise in the
+                 logo's flat field, so its edges no longer match the badge. A logo
+                 is mostly flat colour — encode it losslessly. */
+              quality={100}
+              className="w-[38px] h-auto"
             />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold tracking-widest uppercase text-white leading-none mb-0.5">
-              MG Consulting Firm
-            </p>
-            <p className="text-[11px] text-white/60 tracking-wide leading-none">
-              Client Portal
-            </p>
-          </div>
+          </span>
+          <p className="text-[13px] font-semibold text-[#1d1d1f] tracking-[-0.01em] leading-none">
+            Client Portal
+          </p>
         </div>
 
         {/* Divider */}
@@ -127,7 +135,7 @@ export default function Sidebar({
                       href={item.href}
                       onClick={onClose}
                       aria-current={active ? "page" : undefined}
-                      className={`relative flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] transition-colors duration-150 ${
+                      className={`relative flex items-center gap-2.5 px-3 py-2 rounded-full text-[14px] transition-colors duration-150 ${
                         active
                           ? "text-white font-medium"
                           : "text-[#3c3c43] font-normal hover:bg-[#ebebed]"
@@ -136,7 +144,7 @@ export default function Sidebar({
                       {active && (
                         <motion.span
                           layoutId="sidebar-active"
-                          className="absolute inset-0 rounded-[7px] bg-[#264f5e] shadow-sm"
+                          className="absolute inset-0 rounded-full bg-[#264f5e] shadow-sm"
                           transition={{ type: "spring", stiffness: 500, damping: 35 }}
                         />
                       )}

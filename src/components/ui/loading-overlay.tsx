@@ -1,5 +1,7 @@
 "use client";
 
+import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
+
 type LoadingOverlayProps = {
   show: boolean;
   label?: string;
@@ -18,17 +20,15 @@ export function LoadingOverlay({ show, label = "Loading...", variant = "minimal"
   } as const;
 
   const spinner = (
-    <div
-      className="h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
-      aria-hidden="true"
-    />
+    <span aria-hidden="true" className="[&_svg]:size-6">
+      <LoadingIndicator type="line-simple" size="sm" />
+    </span>
   );
 
   const pulseDot = (
-    <div className="relative h-3 w-3">
-      <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping" />
-      <span className="absolute inset-0 rounded-full bg-blue-500" />
-    </div>
+    <span aria-hidden="true" className="[&_svg]:size-5">
+      <LoadingIndicator type="dot-circle" size="sm" />
+    </span>
   );
 
   return (

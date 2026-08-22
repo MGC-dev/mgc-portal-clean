@@ -10,6 +10,7 @@
     "doc:pdf": "node scripts/md-to-pdf.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.1",
@@ -31,6 +32,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "docx": "^9.7.1",
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
@@ -53,7 +55,7 @@
     "recharts": "^3.1.2",
     "resend": "^6.1.2",
     "swiper": "^11.2.10",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.6.0",
     "three": "^0.179.1"
   },
   "devDependencies": {

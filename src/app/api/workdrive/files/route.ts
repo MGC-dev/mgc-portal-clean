@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getClientFolderIdFromBigin, listWorkDriveFolder } from "@/lib/zoho-workdrive";
+import { getClientFolderIdFromBigin, listWorkDriveFolder, clientSafeZohoMessage, ZohoAuthError } from "@/lib/zoho-workdrive";
 
 export async function GET(request: Request) {
   try {
@@ -35,8 +35,8 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error("WorkDrive Files Error:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to fetch WorkDrive files" },
-      { status: 500 }
+      { error: clientSafeZohoMessage(error) },
+      { status: error instanceof ZohoAuthError && error.rateLimited ? 503 : 500 }
     );
   }
 }

@@ -46,7 +46,7 @@ export default function ResourceLibraryPage() {
   const filtered = activeTab === "documents" ? docs : vids;
 
   return (
-    <div className="p-4 sm:p-8">
+    <div className="px-4 sm:px-8 pb-8">
       <h2 className="text-xl sm:text-2xl font-bold mb-6">📚 Resource Library</h2>
 
           {/* Tabs */}
@@ -87,7 +87,7 @@ export default function ResourceLibraryPage() {
                     setSelectedDoc(doc);
                     setOpenDoc(true);
                   }}
-                  className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8 flex flex-col justify-between hover:shadow-[0_4px_15px_rgba(0,0,0,0.04)] transition-all cursor-pointer"
+                  className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 flex flex-col justify-between hover:border-black/[0.14] transition-colors cursor-pointer"
                 >
                   <div className="flex items-start gap-4">
                     <FileText size={28} className="text-[#264f5e] mt-1" />
@@ -114,7 +114,7 @@ export default function ResourceLibraryPage() {
                     setSelectedVideo(video);
                     setOpenVideo(true);
                   }}
-                  className="bg-white rounded-3xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] p-6 sm:p-8 flex flex-col justify-between hover:shadow-[0_4px_15px_rgba(0,0,0,0.04)] transition-all cursor-pointer"
+                  className="bg-white rounded-2xl border border-black/[0.07] p-6 sm:p-8 flex flex-col justify-between hover:border-black/[0.14] transition-colors cursor-pointer"
                 >
                   <div className="flex items-start gap-4">
                     <Play size={28} className="text-pink-600 mt-1" />
