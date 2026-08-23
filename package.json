@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "doc:pdf": "node scripts/md-to-pdf.js"
+    "doc:pdf": "node scripts/md-to-pdf.js",
+    "predev": "node scripts/gen-dev-manifest.mjs",
+    "prebuild": "node scripts/gen-dev-manifest.mjs",
+    "dev:manifest": "node scripts/gen-dev-manifest.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

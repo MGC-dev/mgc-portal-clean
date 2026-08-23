@@ -161,3 +161,73 @@ font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, H
 
 
 * { box-sizing: border-box; transition: background-color .25s ease, color .25s ease, border-color .25s ease; }
+/* ───────────────────────────────────────────────────────────────────────────
+   Dev Console theme — light, Apple-flavoured, high-tech.
+   Scoped to .dev-console so nothing here leaks into the client or admin
+   portals, which keep the teal brand styling.
+   ─────────────────────────────────────────────────────────────────────────── */
+.dev-console {
+  --dev-bg: #f5f5f7;
+  --dev-surface: #ffffff;
+  --dev-surface-sunken: #fafafc;
+  --dev-hairline: rgba(0, 0, 0, 0.08);
+  --dev-hairline-strong: rgba(0, 0, 0, 0.14);
+
+  --dev-text: #1d1d1f;
+  --dev-text-secondary: #6e6e73;
+  --dev-text-tertiary: #8e8e93;
+
+  --dev-accent: #0071e3;
+  --dev-accent-hover: #0077ed;
+  --dev-accent-soft: rgba(0, 113, 227, 0.1);
+
+  --dev-ok: #0a7c42;
+  --dev-ok-soft: rgba(52, 199, 89, 0.14);
+  --dev-warn: #8a5a00;
+  --dev-warn-soft: rgba(255, 159, 10, 0.16);
+  --dev-fail: #c9252d;
+  --dev-fail-soft: rgba(255, 59, 48, 0.11);
+  --dev-muted-soft: rgba(0, 0, 0, 0.05);
+
+  /* Layered shadows: a tight contact shadow plus a soft ambient one. */
+  --dev-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.02);
+  --dev-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(0, 0, 0, 0.14);
+  --dev-shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.04), 0 16px 40px -16px rgba(0, 0, 0, 0.2);
+
+  background: var(--dev-bg);
+  color: var(--dev-text);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+/* Hairline that stays 1 physical pixel on retina displays. */
+.dev-hairline-b {
+  box-shadow: inset 0 -1px 0 var(--dev-hairline);
+}
+
+/* Faint engineering grid used behind the overview hero. */
+.dev-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.028) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: center;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 75%);
+}
+
+@keyframes dev-sheen {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+.dev-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 70%
+  );
+  animation: dev-sheen 2.2s ease-in-out infinite;
+}

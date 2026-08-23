@@ -7,10 +7,33 @@
  *
  * For API routes: session is refreshed and passed through — no redirects.
  * For page routes: session is refreshed, then routing/redirect logic runs.
+ *
+ * Maintenance mode (toggled from /dev) is enforced here for PAGE routes only:
+ * API routes keep serving so inbound webhooks (Zoho, Fireflies, Retell) are not
+ * dropped while the UI is closed. Only `developer` / `super_admin` bypass it.
  */
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { readMaintenanceForEdge } from "@/lib/dev/maintenance-edge";
+import { roleIsDeveloper } from "@/lib/dev/access-roles";
+
+/**
+ * Paths that stay reachable while maintenance mode is on, so a developer can
+ * still sign in and switch it back off.
+ */
+const MAINTENANCE_ALLOWLIST = [
+  "/maintenance",
+  "/dev",
+  "/login",
+  "/auth/logout",
+];
+
+function isMaintenanceAllowed(pathname: string): boolean {
+  return MAINTENANCE_ALLOWLIST.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+}
 
 export async function middleware(request: NextRequest) {
   // supabaseResponse must be returned at the end (or used as base for redirects)
@@ -91,6 +114,37 @@ export async function middleware(request: NextRequest) {
     const userIsAdmin = Boolean(
       profile?.role && ["admin", "super_admin"].includes(profile.role!)
     );
+    const userIsDev = roleIsDeveloper(profile?.role);
+
+    // Maintenance mode — developers work straight through it.
+    if (!userIsDev && !isMaintenanceAllowed(request.nextUrl.pathname)) {
+      const maintenance = await readMaintenanceForEdge(supabase);
+      if (maintenance.enabled) {
+        return NextResponse.redirect(new URL("/maintenance", request.url));
+      }
+    }
+
+    // Protect /dev — it is developer-only, admins included.
+    if (request.nextUrl.pathname.startsWith("/dev") && !userIsDev) {
+      return NextResponse.redirect(
+        new URL(userIsAdmin ? "/admin" : "/mgdashboard", request.url)
+      );
+    }
+
+    // Send developers to their console instead of a client entry point.
+    // super_admins hold both roles: they keep the admin portal as their home
+    // and reach /dev by navigating to it, so this must not fire for them.
+    if (
+      userIsDev &&
+      !userIsAdmin &&
+      (request.nextUrl.pathname === "/" ||
+        request.nextUrl.pathname.startsWith("/login") ||
+        request.nextUrl.pathname.startsWith("/register"))
+    ) {
+      return NextResponse.redirect(new URL("/dev", request.url));
+    }
+
+    // A pure developer may still open /mgdashboard to debug it — no redirect.
 
     // Block suspended users
     if (
@@ -111,9 +165,11 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }
 
-    // Protect /admin — non-admins get sent to their dashboard
+    // Protect /admin — non-admins get sent to their own dashboard
     if (request.nextUrl.pathname.startsWith("/admin") && !userIsAdmin) {
-      return NextResponse.redirect(new URL("/mgdashboard", request.url));
+      return NextResponse.redirect(
+        new URL(userIsDev ? "/dev" : "/mgdashboard", request.url)
+      );
     }
 
     // Authenticated users don't need to see /register
@@ -123,10 +179,20 @@ export async function middleware(request: NextRequest) {
       );
     }
   } else {
-    // Unauthenticated — redirect protected pages to login
+    // Unauthenticated — maintenance page for everyone, except the paths that
+    // let a developer sign in and turn it off again.
+    if (!isMaintenanceAllowed(request.nextUrl.pathname)) {
+      const maintenance = await readMaintenanceForEdge(supabase);
+      if (maintenance.enabled) {
+        return NextResponse.redirect(new URL("/maintenance", request.url));
+      }
+    }
+
+    // Redirect protected pages to login
     if (
       request.nextUrl.pathname.startsWith("/mgdashboard") ||
-      request.nextUrl.pathname.startsWith("/admin")
+      request.nextUrl.pathname.startsWith("/admin") ||
+      request.nextUrl.pathname.startsWith("/dev")
     ) {
       return NextResponse.redirect(new URL("/login", request.url));
     }

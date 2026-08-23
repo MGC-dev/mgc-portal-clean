@@ -17,6 +17,7 @@ Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for aut
 - [Scripts](#scripts)
 - [Architecture](#architecture)
 - [Authentication & RBAC](#authentication--rbac)
+- [Dev Console](#dev-console)
 - [Application Routes](#application-routes)
 - [API Reference](#api-reference)
 - [Core Workflows](#core-workflows)
@@ -86,7 +87,9 @@ Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for aut
 | `npm run start`               | Serve the production build                              |
 | `npm run lint`                | Run ESLint (Next.js config)                             |
 | `npm run doc:pdf`             | Render a Markdown file to PDF via Puppeteer             |
+| `npm run dev:manifest`        | Regenerate the dev console route/dependency manifest    |
 | `node scripts/create-admin.mjs …` | Create a pre‑confirmed admin user in Supabase       |
+| `node scripts/set-developer.mjs <email> [--super-admin\|--revoke]` | Grant/revoke dev console access |
 
 `scripts/zoho-embedded-express.js` is a standalone Express sample for generating a Zoho Sign embedded signing URL — useful for testing Zoho credentials outside the app.
 
@@ -109,7 +112,7 @@ Built on **Next.js 15 (App Router)** and **React 19**, with **Supabase** for aut
 The app uses **Supabase Auth** with a role‑based access model:
 
 - Users live in `auth.users` and are mirrored in `public.profiles`.
-- A primary `role` column on `profiles` — `client`, `provider`, `admin`, `support`, `super_admin` — drives access, with optional additional roles via `public.role_assignments`.
+- A primary `role` column on `profiles` — `client`, `provider`, `admin`, `support`, `super_admin`, `developer` — drives access, with optional additional roles via `public.role_assignments`.
 - **Row Level Security** ensures clients only reach their own rows, while admins manage globally.
 - Sessions are cookie‑based and auto‑refreshed in the browser and in middleware.
 
@@ -120,11 +123,58 @@ The app uses **Supabase Auth** with a role‑based access model:
 | Unauthenticated user hits `/mgdashboard` or `/admin`  | → `/login`                      |
 | Suspended user (any page)                             | → `/suspended`                  |
 | Admin / super_admin lands on `/login` or `/mgdashboard` | → `/admin`                    |
-| Non‑admin hits `/admin`                               | → `/mgdashboard`                |
+| Non‑admin hits `/admin`                               | → `/mgdashboard` (`/dev` for developers) |
+| Non‑developer hits `/dev`                             | → `/admin` or `/mgdashboard`    |
+| Developer lands on `/` or `/login`                    | → `/dev`                        |
+| Maintenance mode on, user is not a developer          | → `/maintenance`                |
 
-To promote a user to admin, set `profiles.role = 'admin'` (or add an `admin` row to `role_assignments`), or run `scripts/create-admin.mjs`.
+To promote a user to admin, set `profiles.role = 'admin'` (or add an `admin` row to `role_assignments`), or run `scripts/create-admin.mjs`. For the dev console, run `node scripts/set-developer.mjs <email>`.
 
 ---
+
+## Dev Console
+
+A developer‑only control panel at **`/dev`**, separate from the admin portal. Only `developer` and `super_admin` reach it — admins are redirected away, because it exposes environment and infrastructure detail the admin portal deliberately hides.
+
+**Setup (once):**
+
+1. Apply [`supabase-dev-dashboard.sql`](./supabase-dev-dashboard.sql) in the Supabase SQL editor. It adds the `developer` role and creates `public.app_settings` and `public.dev_events`.
+2. Grant yourself the role:
+   ```bash
+   node scripts/set-developer.mjs you@example.com
+   ```
+   `developer` reaches `/dev` **only** — it is not an admin role. If the same person also runs the admin portal, use `--super-admin` instead, which reaches both `/dev` and `/admin`.
+3. Sign in and open `/dev`.
+
+| Page               | What it shows                                                                                   |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `/dev`             | Runtime, hosting, build/git metadata, maintenance toggle, health summary                        |
+| `/dev/health`      | Live round‑trips against Supabase, Zoho, Resend, Fireflies and Anthropic, with latencies         |
+| `/dev/stack`       | Stack by layer, integrations, npm scripts, every installed package and version                   |
+| `/dev/routes`      | Every page and API route with its HTTP handlers and source file                                  |
+| `/dev/env`         | Which environment variables are set — never their values (see below)                             |
+| `/dev/database`    | Row counts per table and storage bucket inventory                                                |
+| `/dev/session`     | Your auth user, profile row, JWT metadata and cookie names — for debugging auth and redirects    |
+| `/dev/logs`        | `dev_events` audit trail and error log                                                           |
+
+**Maintenance mode.** The toggle on `/dev` writes `app_settings.maintenance`. When on, page routes redirect everyone except developers to `/maintenance`; **API routes keep serving** so inbound webhooks (Zoho, Fireflies, Retell) are not dropped. `/login`, `/dev` and `/auth/logout` stay reachable so a developer can always sign in and switch it back off. Middleware caches the flag for 10 seconds per instance, so a toggle takes up to that long to reach every warm instance. If the settings row cannot be read, the site **fails open** — it stays up.
+
+**Secret handling.** `/dev/env` reports only whether a variable is set, its length, and an 8‑character SHA‑256 fingerprint — enough to confirm which key is deployed by comparing fingerprints between environments, without exposing the key. `NEXT_PUBLIC_*` values are shown in full because they already ship to every browser. `/dev/session` returns cookie names and sizes, never cookie values.
+
+**Route/dependency manifest.** `scripts/gen-dev-manifest.mjs` scans `src/app` and `package.json` into `src/lib/dev/manifest.generated.json`. It runs automatically on `predev` and `prebuild`, so the inventory matches the deployed code; regenerate manually with `npm run dev:manifest`.
+
+**Recording events.** Server code can append to the log:
+
+```ts
+import { logDevEvent } from "@/lib/dev/events";
+
+await logDevEvent({
+  level: "error",
+  source: "zoho-sign",
+  message: "Signing request failed",
+  meta: { requestId },
+});
+```
 
 ## Application Routes
 
@@ -137,6 +187,7 @@ To promote a user to admin, set `profiles.role = 'admin'` (or add an `admin` row
 | `/register/verify`           | Email OTP verification                   |
 | `/register/forgotpassword`   | Password reset request                   |
 | `/suspended`                 | Shown to suspended accounts              |
+| `/maintenance`               | Shown to everyone while maintenance mode is on |
 
 ### Client dashboard (`/mgdashboard`)
 | Route                        | Purpose                                  |
@@ -164,6 +215,18 @@ To promote a user to admin, set `profiles.role = 'admin'` (or add an `admin` row
 | `/admin/client-uploads`      | Review client‑submitted documents        |
 | `/admin/support`             | Support queue                            |
 
+### Dev console (`/dev`) — `developer` / `super_admin` only
+| Route                        | Purpose                                  |
+| ---------------------------- | ---------------------------------------- |
+| `/dev`                       | System overview & maintenance toggle     |
+| `/dev/health`                | Live dependency health checks            |
+| `/dev/stack`                 | Tech stack & installed packages          |
+| `/dev/routes`                | Route and API inventory                  |
+| `/dev/env`                   | Environment variable inspector           |
+| `/dev/database`              | Table row counts & storage buckets       |
+| `/dev/session`               | Auth / session / cookie inspector        |
+| `/dev/logs`                  | Dev event log                            |
+
 ---
 
 ## API Reference
@@ -189,6 +252,8 @@ All endpoints live under `src/app/api/**`. Highlights:
 **Zoho & billing** — `/api/zoho/init`, `/api/zoho/subscribe`, `/api/zoho/capture` · `/api/zoho-callback` · `/api/oauth/callback`
 
 **Webhooks** — `/api/zoho-sign/webhook`, `/api/zoho-webhook`, `/api/retell-webhook`
+
+**Dev console** (`developer` / `super_admin` only) — `GET/POST /api/dev/maintenance` (toggle maintenance mode) · `GET /api/dev/health` · `GET /api/dev/system` · `GET /api/dev/env` · `GET /api/dev/database` · `GET /api/dev/session` · `GET/POST /api/dev/events`
 
 **Diagnostics** (dev aids) — `/api/diagnostics/auth`, `/api/diagnostics/supabase`, `/api/sign`
 

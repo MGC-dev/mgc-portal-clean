@@ -1,0 +1,917 @@
+{
+  "generatedAt": "2026-08-23T12:01:32.140Z",
+  "app": {
+    "name": "mgc-registration",
+    "version": "0.1.0"
+  },
+  "git": {
+    "commit": "3f1fcfdfd9a86aaa63c5146cae4b9d1e34bff66c",
+    "shortCommit": "3f1fcfd",
+    "branch": "main",
+    "subject": "Redesign dashboard shell, remove Calendly, prune dead assets",
+    "committedAt": "2026-08-22T21:04:55+02:00",
+    "dirty": true
+  },
+  "build": {
+    "node": "v24.13.0",
+    "platform": "darwin/arm64"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "doc:pdf": "node scripts/md-to-pdf.js",
+    "predev": "node scripts/gen-dev-manifest.mjs",
+    "prebuild": "node scripts/gen-dev-manifest.mjs",
+    "dev:manifest": "node scripts/gen-dev-manifest.mjs"
+  },
+  "dependencies": [
+    {
+      "name": "@anthropic-ai/sdk",
+      "range": "^0.120.0"
+    },
+    {
+      "name": "@emotion/react",
+      "range": "^11.14.0"
+    },
+    {
+      "name": "@emotion/styled",
+      "range": "^11.14.1"
+    },
+    {
+      "name": "@mui/icons-material",
+      "range": "^7.3.1"
+    },
+    {
+      "name": "@mui/material",
+      "range": "^7.3.1"
+    },
+    {
+      "name": "@radix-ui/react-checkbox",
+      "range": "^1.3.3"
+    },
+    {
+      "name": "@radix-ui/react-dialog",
+      "range": "^1.1.15"
+    },
+    {
+      "name": "@radix-ui/react-dropdown-menu",
+      "range": "^2.1.16"
+    },
+    {
+      "name": "@radix-ui/react-label",
+      "range": "^2.1.7"
+    },
+    {
+      "name": "@radix-ui/react-select",
+      "range": "^2.2.6"
+    },
+    {
+      "name": "@radix-ui/react-slot",
+      "range": "^1.2.3"
+    },
+    {
+      "name": "@radix-ui/react-tabs",
+      "range": "^1.1.13"
+    },
+    {
+      "name": "@react-three/drei",
+      "range": "^10.7.3"
+    },
+    {
+      "name": "@react-three/fiber",
+      "range": "^9.3.0"
+    },
+    {
+      "name": "@supabase/auth-helpers-nextjs",
+      "range": "^0.10.0"
+    },
+    {
+      "name": "@supabase/ssr",
+      "range": "^0.7.0"
+    },
+    {
+      "name": "@supabase/supabase-js",
+      "range": "^2.74.0"
+    },
+    {
+      "name": "autoprefixer",
+      "range": "^10.4.21"
+    },
+    {
+      "name": "axios",
+      "range": "^1.13.2"
+    },
+    {
+      "name": "class-variance-authority",
+      "range": "^0.7.1"
+    },
+    {
+      "name": "clsx",
+      "range": "^2.1.1"
+    },
+    {
+      "name": "date-fns",
+      "range": "^4.1.0"
+    },
+    {
+      "name": "docx",
+      "range": "^9.7.1"
+    },
+    {
+      "name": "dotenv",
+      "range": "^17.2.3"
+    },
+    {
+      "name": "ejs",
+      "range": "^3.1.10"
+    },
+    {
+      "name": "express",
+      "range": "^5.1.0"
+    },
+    {
+      "name": "form-data",
+      "range": "^4.0.4"
+    },
+    {
+      "name": "framer-motion",
+      "range": "^12.23.12"
+    },
+    {
+      "name": "geist",
+      "range": "^1.5.1"
+    },
+    {
+      "name": "js",
+      "range": "^0.1.0"
+    },
+    {
+      "name": "lucide-react",
+      "range": "^0.540.0"
+    },
+    {
+      "name": "next",
+      "range": "^15.5.18"
+    },
+    {
+      "name": "next-auth",
+      "range": "^4.24.11"
+    },
+    {
+      "name": "node-fetch",
+      "range": "^2.7.0"
+    },
+    {
+      "name": "nookies",
+      "range": "^2.5.2"
+    },
+    {
+      "name": "postcss",
+      "range": "^8.5.6"
+    },
+    {
+      "name": "react",
+      "range": "19.1.0"
+    },
+    {
+      "name": "react-big-calendar",
+      "range": "^1.19.4"
+    },
+    {
+      "name": "react-day-picker",
+      "range": "^9.9.0"
+    },
+    {
+      "name": "react-dom",
+      "range": "19.1.0"
+    },
+    {
+      "name": "react-feather",
+      "range": "^2.0.10"
+    },
+    {
+      "name": "react-hook-form",
+      "range": "^7.62.0"
+    },
+    {
+      "name": "recharts",
+      "range": "^3.1.2"
+    },
+    {
+      "name": "resend",
+      "range": "^6.1.2"
+    },
+    {
+      "name": "swiper",
+      "range": "^11.2.10"
+    },
+    {
+      "name": "tailwind-merge",
+      "range": "^3.6.0"
+    },
+    {
+      "name": "three",
+      "range": "^0.179.1"
+    }
+  ],
+  "devDependencies": [
+    {
+      "name": "@tailwindcss/postcss",
+      "range": "^4"
+    },
+    {
+      "name": "@types/node",
+      "range": "^20"
+    },
+    {
+      "name": "@types/react",
+      "range": "^19"
+    },
+    {
+      "name": "@types/react-big-calendar",
+      "range": "^1.16.2"
+    },
+    {
+      "name": "@types/react-dom",
+      "range": "^19"
+    },
+    {
+      "name": "@types/recharts",
+      "range": "^1.8.29"
+    },
+    {
+      "name": "ejs",
+      "range": "^3.1.9"
+    },
+    {
+      "name": "eslint",
+      "range": "9.39.1"
+    },
+    {
+      "name": "eslint-config-next",
+      "range": "16.0.3"
+    },
+    {
+      "name": "express",
+      "range": "^4.18.2"
+    },
+    {
+      "name": "markdown-it",
+      "range": "^14.1.0"
+    },
+    {
+      "name": "puppeteer",
+      "range": "^23.11.1"
+    },
+    {
+      "name": "tailwindcss",
+      "range": "^4.1.11"
+    },
+    {
+      "name": "tw-animate-css",
+      "range": "^1.3.7"
+    },
+    {
+      "name": "typescript",
+      "range": "^5"
+    }
+  ],
+  "routes": {
+    "pages": [
+      {
+        "path": "/",
+        "source": "src/app/page.tsx"
+      },
+      {
+        "path": "/admin",
+        "source": "src/app/admin/page.tsx"
+      },
+      {
+        "path": "/admin/client-uploads",
+        "source": "src/app/admin/client-uploads/page.tsx"
+      },
+      {
+        "path": "/admin/clients",
+        "source": "src/app/admin/clients/page.tsx"
+      },
+      {
+        "path": "/admin/contracts",
+        "source": "src/app/admin/contracts/page.tsx"
+      },
+      {
+        "path": "/admin/resources",
+        "source": "src/app/admin/resources/page.tsx"
+      },
+      {
+        "path": "/admin/support",
+        "source": "src/app/admin/support/page.tsx"
+      },
+      {
+        "path": "/admin/users",
+        "source": "src/app/admin/users/page.tsx"
+      },
+      {
+        "path": "/auth",
+        "source": "src/app/auth/page.tsx"
+      },
+      {
+        "path": "/dev",
+        "source": "src/app/dev/page.tsx"
+      },
+      {
+        "path": "/dev/database",
+        "source": "src/app/dev/database/page.tsx"
+      },
+      {
+        "path": "/dev/env",
+        "source": "src/app/dev/env/page.tsx"
+      },
+      {
+        "path": "/dev/health",
+        "source": "src/app/dev/health/page.tsx"
+      },
+      {
+        "path": "/dev/logs",
+        "source": "src/app/dev/logs/page.tsx"
+      },
+      {
+        "path": "/dev/routes",
+        "source": "src/app/dev/routes/page.tsx"
+      },
+      {
+        "path": "/dev/session",
+        "source": "src/app/dev/session/page.tsx"
+      },
+      {
+        "path": "/dev/stack",
+        "source": "src/app/dev/stack/page.tsx"
+      },
+      {
+        "path": "/login",
+        "source": "src/app/login/page.tsx"
+      },
+      {
+        "path": "/maintenance",
+        "source": "src/app/maintenance/page.tsx"
+      },
+      {
+        "path": "/mgdashboard",
+        "source": "src/app/mgdashboard/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/addon",
+        "source": "src/app/mgdashboard/addon/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/billing",
+        "source": "src/app/mgdashboard/billing/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/company",
+        "source": "src/app/mgdashboard/company/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/contracts",
+        "source": "src/app/mgdashboard/contracts/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/documents",
+        "source": "src/app/mgdashboard/documents/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/meetings",
+        "source": "src/app/mgdashboard/meetings/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/questions",
+        "source": "src/app/mgdashboard/questions/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/resources",
+        "source": "src/app/mgdashboard/resources/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/sessions",
+        "source": "src/app/mgdashboard/sessions/page.tsx"
+      },
+      {
+        "path": "/mgdashboard/subscribe",
+        "source": "src/app/mgdashboard/subscribe/page.tsx"
+      },
+      {
+        "path": "/register",
+        "source": "src/app/register/page.tsx"
+      },
+      {
+        "path": "/register/forgotpassword",
+        "source": "src/app/register/forgotpassword/page.tsx"
+      },
+      {
+        "path": "/register/verify",
+        "source": "src/app/register/verify/page.tsx"
+      },
+      {
+        "path": "/suspended",
+        "source": "src/app/suspended/page.tsx"
+      }
+    ],
+    "apis": [
+      {
+        "path": "/api/admin/client-documents",
+        "source": "src/app/api/admin/client-documents/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/admin/client-documents/[id]",
+        "source": "src/app/api/admin/client-documents/[id]/route.ts",
+        "methods": [
+          "DELETE"
+        ]
+      },
+      {
+        "path": "/api/admin/clients",
+        "source": "src/app/api/admin/clients/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/admin/contracts",
+        "source": "src/app/api/admin/contracts/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/admin/contracts/[id]",
+        "source": "src/app/api/admin/contracts/[id]/route.ts",
+        "methods": [
+          "DELETE"
+        ]
+      },
+      {
+        "path": "/api/admin/contracts/[id]/link-zoho",
+        "source": "src/app/api/admin/contracts/[id]/link-zoho/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/contracts/upload",
+        "source": "src/app/api/admin/contracts/upload/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/delete-user",
+        "source": "src/app/api/admin/delete-user/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/resources/[id]",
+        "source": "src/app/api/admin/resources/[id]/route.ts",
+        "methods": [
+          "DELETE"
+        ]
+      },
+      {
+        "path": "/api/admin/resources/upload",
+        "source": "src/app/api/admin/resources/upload/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/support/list",
+        "source": "src/app/api/admin/support/list/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/admin/support/update-status",
+        "source": "src/app/api/admin/support/update-status/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/suspend-user",
+        "source": "src/app/api/admin/suspend-user/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/unsuspend-user",
+        "source": "src/app/api/admin/unsuspend-user/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/users",
+        "source": "src/app/api/admin/users/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/admin/workdrive/files",
+        "source": "src/app/api/admin/workdrive/files/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/admin/workdrive/files/delete",
+        "source": "src/app/api/admin/workdrive/files/delete/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/workdrive/files/upload",
+        "source": "src/app/api/admin/workdrive/files/upload/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/workdrive/folders",
+        "source": "src/app/api/admin/workdrive/folders/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/admin/workdrive/view",
+        "source": "src/app/api/admin/workdrive/view/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/auth/callback",
+        "source": "src/app/api/auth/callback/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/auth/callback/zoho",
+        "source": "src/app/api/auth/callback/zoho/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/auth/forgot-password",
+        "source": "src/app/api/auth/forgot-password/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/auth/generate-signup-link",
+        "source": "src/app/api/auth/generate-signup-link/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/auth/login",
+        "source": "src/app/api/auth/login/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/auth/reset-password",
+        "source": "src/app/api/auth/reset-password/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/auth/verify-otp",
+        "source": "src/app/api/auth/verify-otp/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/client-documents/[id]/url",
+        "source": "src/app/api/client-documents/[id]/url/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/client/documents",
+        "source": "src/app/api/client/documents/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/client/documents/[id]",
+        "source": "src/app/api/client/documents/[id]/route.ts",
+        "methods": [
+          "DELETE"
+        ]
+      },
+      {
+        "path": "/api/client/documents/upload",
+        "source": "src/app/api/client/documents/upload/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/contracts/[id]/download",
+        "source": "src/app/api/contracts/[id]/download/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/contracts/[id]/sign",
+        "source": "src/app/api/contracts/[id]/sign/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/contracts/[id]/sign-url",
+        "source": "src/app/api/contracts/[id]/sign-url/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/contracts/[id]/signed-url",
+        "source": "src/app/api/contracts/[id]/signed-url/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/contracts/[id]/start-sign",
+        "source": "src/app/api/contracts/[id]/start-sign/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/contracts/[id]/status",
+        "source": "src/app/api/contracts/[id]/status/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/contracts/[id]/url",
+        "source": "src/app/api/contracts/[id]/url/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/contracts/list",
+        "source": "src/app/api/contracts/list/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/dev/database",
+        "source": "src/app/api/dev/database/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/dev/env",
+        "source": "src/app/api/dev/env/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/dev/events",
+        "source": "src/app/api/dev/events/route.ts",
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/dev/health",
+        "source": "src/app/api/dev/health/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/dev/maintenance",
+        "source": "src/app/api/dev/maintenance/route.ts",
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/dev/session",
+        "source": "src/app/api/dev/session/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/dev/system",
+        "source": "src/app/api/dev/system/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/diagnostics/auth",
+        "source": "src/app/api/diagnostics/auth/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/diagnostics/supabase",
+        "source": "src/app/api/diagnostics/supabase/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/fireflies/webhook",
+        "source": "src/app/api/fireflies/webhook/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/meetings/documents",
+        "source": "src/app/api/meetings/documents/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/meetings/download",
+        "source": "src/app/api/meetings/download/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/oauth/callback",
+        "source": "src/app/api/oauth/callback/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/profile",
+        "source": "src/app/api/profile/route.ts",
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/resources",
+        "source": "src/app/api/resources/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/retell-webhook",
+        "source": "src/app/api/retell-webhook/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/sign",
+        "source": "src/app/api/sign/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/support",
+        "source": "src/app/api/support/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/support/recent",
+        "source": "src/app/api/support/recent/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/tasks",
+        "source": "src/app/api/tasks/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/workdrive/download",
+        "source": "src/app/api/workdrive/download/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/workdrive/files",
+        "source": "src/app/api/workdrive/files/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/zoho-callback",
+        "source": "src/app/api/zoho-callback/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/zoho-sign/webhook",
+        "source": "src/app/api/zoho-sign/webhook/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/zoho-webhook",
+        "source": "src/app/api/zoho-webhook/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/api/zoho/callback",
+        "source": "src/app/api/zoho/callback/route.tsx",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/zoho/capture",
+        "source": "src/app/api/zoho/capture/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/zoho/init",
+        "source": "src/app/api/zoho/init/route.ts",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/api/zoho/subscribe",
+        "source": "src/app/api/zoho/subscribe/route.ts",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/auth/logout",
+        "source": "src/app/auth/logout/route.ts",
+        "methods": [
+          "GET",
+          "POST"
+        ]
+      }
+    ]
+  },
+  "counts": {
+    "pages": 34,
+    "apis": 69,
+    "apiHandlers": 73,
+    "dependencies": 47,
+    "devDependencies": 15
+  }
+}
