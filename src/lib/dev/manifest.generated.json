@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-08-23T12:01:32.140Z",
+  "generatedAt": "2026-08-24T05:52:19.564Z",
   "app": {
     "name": "mgc-registration",
     "version": "0.1.0"
   },
   "git": {
-    "commit": "3f1fcfdfd9a86aaa63c5146cae4b9d1e34bff66c",
-    "shortCommit": "3f1fcfd",
+    "commit": "a4e6b552bb64ec5ea698518b46883962bb96a88a",
+    "shortCommit": "a4e6b55",
     "branch": "main",
-    "subject": "Redesign dashboard shell, remove Calendly, prune dead assets",
-    "committedAt": "2026-08-22T21:04:55+02:00",
+    "subject": "Add developer-only dev console with maintenance mode",
+    "committedAt": "2026-08-23T14:02:15+02:00",
     "dirty": true
   },
   "build": {
