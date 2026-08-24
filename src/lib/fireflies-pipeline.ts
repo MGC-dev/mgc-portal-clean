@@ -14,6 +14,7 @@ import {
   uploadFileToWorkDrive,
 } from "@/lib/zoho-workdrive";
 import { MEETINGS_FOLDER_NAME } from "@/lib/meetings-folder";
+import { saveMeetingSummary } from "@/lib/meeting-summaries-store";
 
 export type ProcessMeetingResult = {
   meetingId?: string;
@@ -132,6 +133,20 @@ export async function processMeeting(meetingId: string): Promise<ProcessMeetingR
       }
 
       await uploadFileToWorkDrive(meetingsFolderId, fileName, docBuffer);
+
+      // Readable copy for the portal. Saved after the upload so a summary is
+      // only ever shown for a document the client can actually download.
+      await saveMeetingSummary({
+        transcriptId: transcript.id,
+        clientEmail: email,
+        meetingTitle,
+        meetingDateIso: dateIso,
+        durationLabel,
+        attendees: attendeeLabels,
+        fileName,
+        summary,
+      });
+
       delivered.push({ email, folderId: meetingsFolderId });
       console.log(`[fireflies] Delivered "${fileName}" to ${email}`);
     } catch (error: any) {
