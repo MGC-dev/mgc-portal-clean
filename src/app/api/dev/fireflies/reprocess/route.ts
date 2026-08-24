@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { getDeveloperContext } from "@/lib/dev/access";
 import { processMeeting } from "@/lib/fireflies-pipeline";
+import { parseFirefliesTranscriptId } from "@/lib/fireflies";
 import { logDevEvent } from "@/lib/dev/events";
 
 // Matches the webhook: summarising + per-client upload can exceed the default.
@@ -29,7 +30,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const meetingId = typeof body?.meetingId === "string" ? body.meetingId.trim() : "";
+  // Accepts a pasted Fireflies view URL as well as a bare id.
+  const meetingId =
+    typeof body?.meetingId === "string" ? parseFirefliesTranscriptId(body.meetingId) : "";
   if (!meetingId) {
     return NextResponse.json({ error: "`meetingId` is required" }, { status: 400 });
   }

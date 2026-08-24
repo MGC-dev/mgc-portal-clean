@@ -97,7 +97,7 @@ export default function DevFirefliesPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !busy) void run();
             }}
-            placeholder="01M0SB8C57DWZEK5TQD63840AM"
+            placeholder="Meeting ID, or paste the Fireflies meeting URL"
             spellCheck={false}
             className="flex-1 rounded-xl bg-[var(--dev-surface-sunken)] border border-[var(--dev-hairline-strong)] px-3.5 py-2.5 text-[13.5px] font-mono text-[var(--dev-text)] placeholder:text-[var(--dev-text-tertiary)] outline-none focus:border-[var(--dev-accent)] transition-colors"
           />

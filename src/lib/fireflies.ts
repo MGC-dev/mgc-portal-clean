@@ -109,6 +109,32 @@ export async function listRecentFirefliesTranscripts(
   return (json?.data?.transcripts ?? []) as FirefliesTranscriptSummary[];
 }
 
+/**
+ * Accept either a bare transcript id or a Fireflies view URL and return the id.
+ *
+ * The dashboard links a meeting as `…/view/<slug>::<id>` (and sometimes just
+ * `…/view/<id>`), so pasting the URL is the path of least resistance when the
+ * transcripts listing does not surface a meeting.
+ */
+export function parseFirefliesTranscriptId(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+
+  let candidate = trimmed;
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const { pathname } = new URL(trimmed);
+      candidate = pathname.split("/").filter(Boolean).pop() ?? "";
+    } catch {
+      return trimmed;
+    }
+  }
+
+  // `Weekly-Sync::01ABC…` — the id is the trailing segment.
+  const afterSeparator = candidate.split("::").pop() ?? candidate;
+  return decodeURIComponent(afterSeparator).trim();
+}
+
 export async function getFirefliesTranscript(transcriptId: string): Promise<FirefliesTranscript> {
   const apiKey = process.env.FIREFLIES_API_KEY;
   if (!apiKey) throw new Error("FIREFLIES_API_KEY is not set");
