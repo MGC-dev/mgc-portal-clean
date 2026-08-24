@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { DEFAULT_MAINTENANCE_MESSAGE, normaliseMaintenanceRow, MAINTENANCE_KEY } from "@/lib/dev/maintenance-edge";
@@ -40,44 +39,25 @@ export default async function MaintenancePage() {
   const { message, since } = await readMessage();
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#f6f9fb] px-6 py-12">
+    <main className="min-h-screen flex items-center justify-center bg-[#2a4457] px-6 py-12">
       <div className="w-full max-w-md text-center">
-        <div className="mx-auto h-16 w-16 rounded-2xl overflow-hidden bg-white border border-[#e8eef1] flex items-center justify-center shadow-sm">
+        <div className="mx-auto h-16 w-16 flex items-center justify-center">
           <Image src="/logo.png" alt="MG Consulting" width={48} height={48} style={{ objectFit: "contain" }} />
         </div>
 
-        <p className="mt-6 text-xs font-semibold tracking-widest text-[#264f5e]/60 uppercase">
+        <p className="mt-6 text-xs font-semibold tracking-widest text-white/50 uppercase">
           MG Consulting Portal
         </p>
-        <h1 className="mt-2 text-2xl font-semibold text-[#1a3340] tracking-tight">
+        <h1 className="mt-2 text-2xl font-semibold text-white tracking-tight">
           We&rsquo;ll be back shortly
         </h1>
-        <p className="mt-3 text-sm text-[#4a6672] leading-relaxed">{message}</p>
+        <p className="mt-3 text-sm text-white/70 leading-relaxed">{message}</p>
 
         {since && (
-          <p className="mt-4 text-xs text-[#6b8a96]">
+          <p className="mt-4 text-xs text-white/50">
             Maintenance started {new Date(since).toLocaleString()}
           </p>
         )}
-
-        <div className="mt-8 rounded-2xl border border-[#e8eef1] bg-white p-4">
-          <p className="text-xs text-[#6b8a96]">
-            Need help in the meantime? Email{" "}
-            <a
-              href="mailto:mgcentral@mgconsultingfirm.com"
-              className="text-[#264f5e] font-medium hover:underline"
-            >
-              mgcentral@mgconsultingfirm.com
-            </a>
-          </p>
-        </div>
-
-        <Link
-          href="/login"
-          className="mt-6 inline-block text-xs text-[#6b8a96] hover:text-[#264f5e] transition-colors"
-        >
-          Staff sign-in
-        </Link>
       </div>
     </main>
   );
