@@ -1,18 +1,22 @@
 import Image from "next/image";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { DEFAULT_MAINTENANCE_MESSAGE, normaliseMaintenanceRow, MAINTENANCE_KEY } from "@/lib/dev/maintenance-edge";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Public maintenance page. Reads the message with the anon key (app_settings is
+ * Public maintenance page. Reads state with the anon key (app_settings is
  * world-readable by design) so it works for signed-out visitors too.
+ *
+ * `enabled` fails open to false (same convention as the middleware's edge
+ * read) so a lookup error never strands a visitor on this page.
  */
-async function readMessage(): Promise<{ message: string; since: string | null }> {
+async function readState(): Promise<{ enabled: boolean; message: string; since: string | null }> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return { message: DEFAULT_MAINTENANCE_MESSAGE, since: null };
+  if (!url || !anon) return { enabled: false, message: DEFAULT_MAINTENANCE_MESSAGE, since: null };
 
   try {
     const cookieStore = await cookies();
@@ -29,14 +33,20 @@ async function readMessage(): Promise<{ message: string; since: string | null }>
       .maybeSingle();
 
     const state = normaliseMaintenanceRow(data);
-    return { message: state.message, since: state.updatedAt };
+    return { enabled: state.enabled, message: state.message, since: state.updatedAt };
   } catch {
-    return { message: DEFAULT_MAINTENANCE_MESSAGE, since: null };
+    return { enabled: false, message: DEFAULT_MAINTENANCE_MESSAGE, since: null };
   }
 }
 
 export default async function MaintenancePage() {
-  const { message, since } = await readMessage();
+  const { enabled, message, since } = await readState();
+
+  // Maintenance mode is off — this page has nothing to show. Bounce
+  // straight back to the home page instead of leaving it visitable.
+  if (!enabled) {
+    redirect("/");
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#2a4457] px-6 py-12">
