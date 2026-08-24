@@ -22,6 +22,7 @@ type MeetingsPayload = {
     duration: number | null;
     emails: string[];
   }[];
+  totalOnAccount?: number;
 };
 
 type ReprocessResult = {
@@ -114,7 +115,7 @@ export default function DevFirefliesPage() {
 
       <Panel
         title="Recent meetings"
-        subtitle="The last 10 meetings on the Fireflies account, with every email the matching step will see. Reprocess one directly instead of hunting for its ID."
+        subtitle="Every transcript on the Fireflies account, newest first, with the emails the matching step will see. A meeting missing here has no transcript — Fireflies never captured it, so no webhook could have fired."
         action={
           <RefreshButton
             onClick={meetings.refresh}
@@ -129,6 +130,13 @@ export default function DevFirefliesPage() {
         )}
         {meetings.data && meetings.data.meetings.length > 0 && (
           <div className="space-y-2.5">
+            <p className="text-[11.5px] text-[var(--dev-text-tertiary)] pb-0.5">
+              {meetings.data.totalOnAccount ?? meetings.data.meetings.length} transcript
+              {(meetings.data.totalOnAccount ?? meetings.data.meetings.length) === 1
+                ? ""
+                : "s"}{" "}
+              on this Fireflies account
+            </p>
             {meetings.data.meetings.map((m) => (
               <div
                 key={m.id}

@@ -18,7 +18,10 @@ export async function GET() {
   if (!isDeveloper) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
-    const transcripts = await listRecentFirefliesTranscripts(10);
+    // Fireflies does not document a default ordering, so pull the maximum the
+    // API allows and sort newest-first here rather than trusting the response
+    // order — otherwise the most recent meeting can be missing from a short page.
+    const transcripts = await listRecentFirefliesTranscripts(50);
 
     const meetings = transcripts.map((t) => {
       const attendees = (t.meeting_attendees || [])
@@ -32,16 +35,23 @@ export async function GET() {
         ),
       ];
 
+      const ms = t.date === null || t.date === undefined ? NaN : Number(t.date);
       return {
         id: t.id,
         title: t.title,
-        date: t.date ? new Date(Number(t.date)).toISOString() : null,
+        date: Number.isNaN(ms) ? null : new Date(ms).toISOString(),
+        sortKey: Number.isNaN(ms) ? 0 : ms,
         duration: t.duration,
         emails,
       };
     });
 
-    return NextResponse.json({ meetings });
+    meetings.sort((a, b) => b.sortKey - a.sortKey);
+
+    return NextResponse.json({
+      meetings: meetings.slice(0, 20).map(({ sortKey: _sortKey, ...m }) => m),
+      totalOnAccount: transcripts.length,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: `${e?.message || e}` }, { status: 500 });
   }
