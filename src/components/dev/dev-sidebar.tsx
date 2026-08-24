@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Mic,
   Route,
   ScrollText,
   Terminal,
@@ -27,6 +28,7 @@ const navItems = [
   { label: "Routes & API", href: "/dev/routes", icon: Route },
   { label: "Environment", href: "/dev/env", icon: KeyRound },
   { label: "Database", href: "/dev/database", icon: Database },
+  { label: "Fireflies", href: "/dev/fireflies", icon: Mic },
   { label: "Session", href: "/dev/session", icon: UserCog },
   { label: "Event Log", href: "/dev/logs", icon: ScrollText },
 ];
