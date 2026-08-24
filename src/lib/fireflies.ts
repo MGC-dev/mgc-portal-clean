@@ -100,10 +100,44 @@ export function verifyFirefliesSignature(
   const hmac = crypto.createHmac("sha256", secret).update(rawBody, "utf8");
   const digest = hmac.digest();
 
+  // Node's hex digest is lowercase; some senders emit uppercase hex, so the hex
+  // comparison is case-normalised. Base64 is left untouched (case is meaningful).
   return (
-    constantTimeEquals(provided, digest.toString("hex")) ||
+    constantTimeEquals(provided.toLowerCase(), digest.toString("hex")) ||
     constantTimeEquals(provided, digest.toString("base64"))
   );
+}
+
+/**
+ * Non-secret diagnostic for a rejected signature: reports WHICH comparison
+ * failed without logging any digest bytes, so a "secret mismatch" can be told
+ * apart from an encoding quirk. Never used to authorise — logging only.
+ */
+export function diagnoseFirefliesSignature(
+  rawBody: string,
+  headerValue: string | null,
+  secret: string
+): {
+  hasHeader: boolean;
+  hasSecret: boolean;
+  hexMatch: boolean;
+  base64Match: boolean;
+  providedLen: number;
+} {
+  const hasHeader = !!headerValue;
+  const hasSecret = !!secret;
+  if (!headerValue || !secret) {
+    return { hasHeader, hasSecret, hexMatch: false, base64Match: false, providedLen: 0 };
+  }
+  const provided = headerValue.startsWith("sha256=") ? headerValue.slice(7) : headerValue;
+  const digest = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest();
+  return {
+    hasHeader,
+    hasSecret,
+    hexMatch: constantTimeEquals(provided.toLowerCase(), digest.toString("hex")),
+    base64Match: constantTimeEquals(provided, digest.toString("base64")),
+    providedLen: provided.length,
+  };
 }
 
 function constantTimeEquals(a: string, b: string): boolean {

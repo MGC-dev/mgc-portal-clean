@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getFirefliesTranscript,
   verifyFirefliesSignature,
+  diagnoseFirefliesSignature,
   attendeeEmails,
   transcriptToPlainText,
   meetingDate,
@@ -50,15 +51,15 @@ export async function POST(request: Request) {
 
   const signature = request.headers.get("x-hub-signature");
   if (!verifyFirefliesSignature(rawBody, signature, secret)) {
-    // Diagnostic — header names only, never values, so nothing secret is logged.
-    // Distinguishes "no signature sent" (e.g. an unsigned test event) from
-    // "signature present but the secret does not match".
-    const headerNames = [...request.headers.keys()].join(", ");
+    // Diagnostic — no digest bytes are logged. If the header is present and
+    // well-formed but neither hexMatch nor base64Match is true, the secret we
+    // hold differs from the one Fireflies signed with (fix the config, not code).
+    const diag = diagnoseFirefliesSignature(rawBody, signature, secret);
     console.warn(
       `[fireflies] Rejected webhook with invalid signature. ` +
-        `x-hub-signature present: ${signature !== null} ` +
-        `(len ${signature?.length ?? 0}, prefix ${JSON.stringify(signature?.slice(0, 7) ?? "")}); ` +
-        `bodyLen ${rawBody.length}; headers: [${headerNames}]`
+        `hasHeader=${diag.hasHeader} hasSecret=${diag.hasSecret} ` +
+        `hexMatch=${diag.hexMatch} base64Match=${diag.base64Match} ` +
+        `providedLen=${diag.providedLen} bodyLen=${rawBody.length}`
     );
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
