@@ -1,6 +1,7 @@
 import {
   getFirefliesTranscript,
   attendeeEmails,
+  transcriptDiagnostics,
   transcriptToPlainText,
   meetingDate,
 } from "@/lib/fireflies";
@@ -21,6 +22,8 @@ export type ProcessMeetingResult = {
   failed?: { email: string; error: string }[];
   /** Set when the pipeline stopped early for a non-error reason. */
   skipped?: string;
+  /** What the transcript contained — populated when the pipeline skips. */
+  diagnostics?: ReturnType<typeof transcriptDiagnostics> & { signedMatchCount?: number };
 };
 
 /**
@@ -33,9 +36,11 @@ export type ProcessMeetingResult = {
 export async function processMeeting(meetingId: string): Promise<ProcessMeetingResult> {
   const transcript = await getFirefliesTranscript(meetingId);
 
+  const diagnostics = transcriptDiagnostics(transcript);
+
   const emails = attendeeEmails(transcript);
   if (emails.length === 0) {
-    return { delivered: [], skipped: "Meeting had no attendee emails" };
+    return { delivered: [], skipped: "Meeting had no attendee emails", diagnostics };
   }
 
   // One Bigin read for all signed clients, then intersect with the attendee
@@ -52,13 +57,20 @@ export async function processMeeting(meetingId: string): Promise<ProcessMeetingR
     .filter((contact): contact is any => !!contact);
 
   if (matched.length === 0) {
-    console.log(`[fireflies] Meeting ${meetingId}: no signed clients among attendees, skipping.`);
-    return { delivered: [], skipped: "No signed clients attended" };
+    console.log(
+      `[fireflies] Meeting ${meetingId}: no signed clients among attendees, skipping. ` +
+        `Emails on the meeting: ${emails.join(", ")}`
+    );
+    return {
+      delivered: [],
+      skipped: "No signed clients attended",
+      diagnostics: { ...diagnostics, signedMatchCount: 0 },
+    };
   }
 
   const transcriptText = transcriptToPlainText(transcript);
   if (!transcriptText.trim()) {
-    return { delivered: [], skipped: "Transcript had no sentences" };
+    return { delivered: [], skipped: "Transcript had no sentences", diagnostics };
   }
 
   const date = meetingDate(transcript);

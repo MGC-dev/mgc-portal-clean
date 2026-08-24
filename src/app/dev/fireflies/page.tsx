@@ -10,6 +10,15 @@ type ReprocessResult = {
   delivered?: { email: string; folderId: string }[];
   failed?: { email: string; error: string }[];
   skipped?: string;
+  diagnostics?: {
+    title?: string | null;
+    attendeeCount?: number;
+    participantCount?: number;
+    hasOrganizer?: boolean;
+    sentenceCount?: number;
+    emails?: string[];
+    signedMatchCount?: number;
+  };
 };
 
 export default function DevFirefliesPage() {
@@ -96,7 +105,25 @@ export default function DevFirefliesPage() {
           }
         >
           {result.skipped ? (
-            <Row label="Skipped">{result.skipped}</Row>
+            <>
+              <Row label="Skipped">{result.skipped}</Row>
+              {result.diagnostics && (
+                <>
+                  <Row label="Meeting title">{result.diagnostics.title || "—"}</Row>
+                  <Row label="Emails found">
+                    {result.diagnostics.emails && result.diagnostics.emails.length > 0
+                      ? result.diagnostics.emails.join(", ")
+                      : "none"}
+                  </Row>
+                  <Row label="Sources">
+                    {`${result.diagnostics.attendeeCount ?? 0} attendees · ` +
+                      `${result.diagnostics.participantCount ?? 0} participants · ` +
+                      `organizer ${result.diagnostics.hasOrganizer ? "yes" : "no"}`}
+                  </Row>
+                  <Row label="Transcript lines">{result.diagnostics.sentenceCount ?? 0}</Row>
+                </>
+              )}
+            </>
           ) : (
             <>
               {result.fileName && <Row label="Document">{result.fileName}</Row>}

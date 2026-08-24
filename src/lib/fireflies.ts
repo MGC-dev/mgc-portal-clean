@@ -16,6 +16,9 @@ export type FirefliesTranscript = {
   /** Minutes. */
   duration: number | null;
   meeting_attendees: FirefliesAttendee[] | null;
+  /** Emails of everyone on the invite, including guests with no Fireflies account. */
+  participants: string[] | null;
+  organizer_email: string | null;
   summary: {
     overview?: string | null;
     action_items?: string | null;
@@ -37,6 +40,8 @@ const TRANSCRIPT_QUERY = `
         email
         displayName
       }
+      participants
+      organizer_email
       summary {
         overview
         action_items
@@ -149,12 +154,41 @@ function constantTimeEquals(a: string, b: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-/** Attendee email addresses, lowercased and de-duplicated. */
+/**
+ * Every email associated with the meeting, lowercased and de-duplicated.
+ *
+ * Drawn from three sources because they are populated inconsistently:
+ * `meeting_attendees` is often empty for meetings recorded outside a calendar
+ * invite, while `participants` still lists the invitee emails (including guests
+ * with no Fireflies account). The organiser is included too — a signed client
+ * who booked the meeting attended it.
+ */
 export function attendeeEmails(transcript: FirefliesTranscript): string[] {
-  const emails = (transcript.meeting_attendees || [])
-    .map((a) => a?.email?.trim().toLowerCase())
-    .filter((e): e is string => !!e);
+  const fromAttendees = (transcript.meeting_attendees || []).map((a) => a?.email);
+  const fromParticipants = transcript.participants || [];
+  const organiser = transcript.organizer_email ? [transcript.organizer_email] : [];
+
+  const emails = [...fromAttendees, ...fromParticipants, ...organiser]
+    .map((e) => e?.trim().toLowerCase())
+    .filter((e): e is string => !!e && e.includes("@"));
+
   return [...new Set(emails)];
+}
+
+/**
+ * Non-identifying counts describing what the transcript actually contained.
+ * Surfaced when the pipeline skips, so "nothing was delivered" can be explained
+ * without re-querying Fireflies by hand.
+ */
+export function transcriptDiagnostics(transcript: FirefliesTranscript) {
+  return {
+    title: transcript.title,
+    attendeeCount: (transcript.meeting_attendees || []).length,
+    participantCount: (transcript.participants || []).length,
+    hasOrganizer: !!transcript.organizer_email,
+    sentenceCount: (transcript.sentences || []).length,
+    emails: attendeeEmails(transcript),
+  };
 }
 
 /** Flatten the sentence list into speaker-labelled plain text for the model. */
