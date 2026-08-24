@@ -18,6 +18,7 @@ type ReprocessResult = {
     sentenceCount?: number;
     emails?: string[];
     signedMatchCount?: number;
+    signedContactCount?: number;
   };
 };
 
@@ -121,6 +122,13 @@ export default function DevFirefliesPage() {
                       `organizer ${result.diagnostics.hasOrganizer ? "yes" : "no"}`}
                   </Row>
                   <Row label="Transcript lines">{result.diagnostics.sentenceCount ?? 0}</Row>
+                  {result.diagnostics.signedContactCount !== undefined && (
+                    <Row label="Signed clients in Bigin">
+                      {result.diagnostics.signedContactCount === 0
+                        ? "0 — nothing to match against (check the Bigin integration)"
+                        : `${result.diagnostics.signedContactCount} — none matched this meeting`}
+                    </Row>
+                  )}
                 </>
               )}
             </>

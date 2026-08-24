@@ -23,7 +23,11 @@ export type ProcessMeetingResult = {
   /** Set when the pipeline stopped early for a non-error reason. */
   skipped?: string;
   /** What the transcript contained — populated when the pipeline skips. */
-  diagnostics?: ReturnType<typeof transcriptDiagnostics> & { signedMatchCount?: number };
+  diagnostics?: ReturnType<typeof transcriptDiagnostics> & {
+    signedMatchCount?: number;
+    /** Total Signed contacts in Bigin — distinguishes "none matched" from "none exist". */
+    signedContactCount?: number;
+  };
 };
 
 /**
@@ -64,7 +68,11 @@ export async function processMeeting(meetingId: string): Promise<ProcessMeetingR
     return {
       delivered: [],
       skipped: "No signed clients attended",
-      diagnostics: { ...diagnostics, signedMatchCount: 0 },
+      diagnostics: {
+        ...diagnostics,
+        signedMatchCount: 0,
+        signedContactCount: byEmail.size,
+      },
     };
   }
 
