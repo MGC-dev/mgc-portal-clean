@@ -1,7 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { ActionButton, ErrorNote, PageHeader, Panel, Pill, Row } from "@/components/dev/ui";
+import {
+  ActionButton,
+  Empty,
+  ErrorNote,
+  Loading,
+  PageHeader,
+  Panel,
+  Pill,
+  RefreshButton,
+  Row,
+} from "@/components/dev/ui";
+import { useDevResource } from "@/components/dev/use-dev-resource";
+
+type MeetingsPayload = {
+  meetings: {
+    id: string;
+    title: string | null;
+    date: string | null;
+    duration: number | null;
+    emails: string[];
+  }[];
+};
 
 type ReprocessResult = {
   ok?: boolean;
@@ -28,9 +49,12 @@ export default function DevFirefliesPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReprocessResult | null>(null);
 
-  const run = async () => {
-    const id = meetingId.trim();
+  const meetings = useDevResource<MeetingsPayload>("/api/dev/fireflies/meetings");
+
+  const run = async (override?: string) => {
+    const id = (override ?? meetingId).trim();
     if (!id) return;
+    if (override) setMeetingId(override);
     setBusy(true);
     setError(null);
     setResult(null);
@@ -70,13 +94,13 @@ export default function DevFirefliesPage() {
             value={meetingId}
             onChange={(e) => setMeetingId(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !busy) run();
+              if (e.key === "Enter" && !busy) void run();
             }}
             placeholder="01M0SB8C57DWZEK5TQD63840AM"
             spellCheck={false}
             className="flex-1 rounded-xl bg-[var(--dev-surface-sunken)] border border-[var(--dev-hairline-strong)] px-3.5 py-2.5 text-[13.5px] font-mono text-[var(--dev-text)] placeholder:text-[var(--dev-text-tertiary)] outline-none focus:border-[var(--dev-accent)] transition-colors"
           />
-          <ActionButton onClick={run} busy={busy} disabled={!meetingId.trim()}>
+          <ActionButton onClick={() => void run()} busy={busy} disabled={!meetingId.trim()}>
             {busy ? "Processing…" : "Reprocess"}
           </ActionButton>
         </div>
@@ -86,6 +110,49 @@ export default function DevFirefliesPage() {
           Bigin. Meetings with no matching client are reported as skipped — that is expected, not a
           failure.
         </p>
+      </Panel>
+
+      <Panel
+        title="Recent meetings"
+        subtitle="The last 10 meetings on the Fireflies account, with every email the matching step will see. Reprocess one directly instead of hunting for its ID."
+        action={
+          <RefreshButton
+            onClick={meetings.refresh}
+            busy={meetings.loading || meetings.refreshing}
+          />
+        }
+      >
+        {meetings.error && <ErrorNote message={meetings.error} />}
+        {meetings.loading && <Loading label="Loading meetings…" />}
+        {meetings.data && meetings.data.meetings.length === 0 && (
+          <Empty label="No meetings found on this Fireflies account." />
+        )}
+        {meetings.data && meetings.data.meetings.length > 0 && (
+          <div className="space-y-2.5">
+            {meetings.data.meetings.map((m) => (
+              <div
+                key={m.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--dev-hairline)] bg-[var(--dev-surface-sunken)] px-3.5 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-[var(--dev-text)] truncate">
+                    {m.title || "Untitled"}
+                  </p>
+                  <p className="text-[11.5px] text-[var(--dev-text-tertiary)] mt-0.5">
+                    {m.date ? new Date(m.date).toLocaleString() : "—"}
+                    {typeof m.duration === "number" ? ` · ${Math.round(m.duration)} min` : ""}
+                  </p>
+                  <p className="text-[11.5px] font-mono text-[var(--dev-text-secondary)] mt-1 break-all">
+                    {m.emails.length > 0 ? m.emails.join(", ") : "no emails on this meeting"}
+                  </p>
+                </div>
+                <ActionButton tone="neutral" onClick={() => void run(m.id)} disabled={busy}>
+                  Reprocess
+                </ActionButton>
+              </div>
+            ))}
+          </div>
+        )}
       </Panel>
 
       {error && <ErrorNote message={error} />}

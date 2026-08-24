@@ -56,6 +56,59 @@ const TRANSCRIPT_QUERY = `
   }
 `;
 
+const RECENT_TRANSCRIPTS_QUERY = `
+  query RecentTranscripts($limit: Int) {
+    transcripts(limit: $limit) {
+      id
+      title
+      date
+      duration
+      participants
+      organizer_email
+      meeting_attendees {
+        email
+      }
+    }
+  }
+`;
+
+export type FirefliesTranscriptSummary = Pick<
+  FirefliesTranscript,
+  "id" | "title" | "date" | "duration" | "participants" | "organizer_email"
+> & { meeting_attendees: { email?: string | null }[] | null };
+
+/**
+ * Recent transcripts for the account, newest first — used by the developer
+ * console so a meeting can be picked without digging its id out of the logs.
+ */
+export async function listRecentFirefliesTranscripts(
+  limit = 10
+): Promise<FirefliesTranscriptSummary[]> {
+  const apiKey = process.env.FIREFLIES_API_KEY;
+  if (!apiKey) throw new Error("FIREFLIES_API_KEY is not set");
+
+  const res = await fetch(FIREFLIES_GRAPHQL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query: RECENT_TRANSCRIPTS_QUERY, variables: { limit } }),
+    cache: "no-store",
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Fireflies request failed: ${res.status} - ${text}`);
+  }
+
+  const json = JSON.parse(text);
+  if (json.errors?.length) {
+    throw new Error(`Fireflies returned errors: ${JSON.stringify(json.errors)}`);
+  }
+  return (json?.data?.transcripts ?? []) as FirefliesTranscriptSummary[];
+}
+
 export async function getFirefliesTranscript(transcriptId: string): Promise<FirefliesTranscript> {
   const apiKey = process.env.FIREFLIES_API_KEY;
   if (!apiKey) throw new Error("FIREFLIES_API_KEY is not set");
