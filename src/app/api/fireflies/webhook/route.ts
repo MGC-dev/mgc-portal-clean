@@ -41,7 +41,10 @@ export async function POST(request: Request) {
   // re-serialising would change the bytes and break the HMAC.
   const rawBody = await request.text();
 
-  const secret = process.env.FIREFLIES_WEBHOOK_SECRET;
+  // Trimmed: pasting a secret into a dashboard env field commonly appends a
+  // trailing newline/space, which silently breaks the HMAC for a secret that is
+  // otherwise correct.
+  const secret = process.env.FIREFLIES_WEBHOOK_SECRET?.trim();
   if (!secret) {
     // Fail closed. This endpoint spends Claude tokens and writes documents into
     // client folders, so it must never be callable by anyone who finds the URL.
