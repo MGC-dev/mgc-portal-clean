@@ -81,7 +81,12 @@ export async function POST(request: Request) {
   // spelling exactly would silently no-op the whole pipeline if the payload
   // used the other, so both are accepted — and the raw value is always logged
   // so the true string is visible after the first real delivery.
-  console.log(`[fireflies] Received eventType: ${JSON.stringify(eventType)} (meetingId: ${meetingId})`);
+  // The body carries only a meeting id + event type (no transcript content), so
+  // logging it is safe and reveals the exact field names a test event uses.
+  console.log(
+    `[fireflies] Received eventType: ${JSON.stringify(eventType)} (meetingId: ${meetingId}); ` +
+      `rawBody: ${rawBody.slice(0, 300)}`
+  );
 
   if (!isTranscriptReadyEvent(eventType)) {
     // Acknowledge so Fireflies doesn't retry an event we simply don't handle.
