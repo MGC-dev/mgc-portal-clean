@@ -194,7 +194,7 @@ export default function MeetingSummaries() {
   }, []);
 
   return (
-    <section className="bg-white rounded-[18px] border border-black/[0.07] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6 sm:p-7 mb-6">
+    <section className="bg-white rounded-[18px] border border-black/[0.035] p-6 sm:p-7 mb-6">
       <div className="flex items-baseline justify-between gap-4 mb-1">
         <h2 className="font-semibold text-[17px] text-[#1d1d1f] tracking-[-0.01em]">
           Meeting Summaries
@@ -208,9 +208,9 @@ export default function MeetingSummaries() {
       </p>
 
       {loading ? (
-        <div className="animate-pulse border-t border-black/[0.06]">
+        <div className="animate-pulse border-t border-black/[0.045]">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-3 py-3.5 border-b border-black/[0.06]">
+            <div key={i} className="flex items-center gap-3 py-3.5 border-b border-black/[0.045]">
               <div className="w-[18px] h-[18px] rounded bg-black/[0.06] shrink-0" />
               <div className="h-3 bg-black/[0.05] rounded-full flex-1 max-w-[300px]" />
               <div className="h-3 bg-black/[0.04] rounded-full w-16" />
@@ -227,12 +227,12 @@ export default function MeetingSummaries() {
           No meeting summaries yet. After your next meeting with us, the write-up will appear here.
         </p>
       ) : (
-        <ul className="border-t border-black/[0.06]">
+        <ul className="border-t border-black/[0.045]">
           {documents.map((doc) => {
             const isOpen = expanded.has(doc.name);
             const canExpand = !!doc.summary;
             return (
-              <li key={doc.name} className="border-b border-black/[0.06]">
+              <li key={doc.name} className="border-b border-black/[0.045]">
                 <div className="flex items-center gap-3 sm:gap-4 py-3.5">
                   <FileText size={17} strokeWidth={1.6} className="text-[#264f5e] shrink-0" />
 
@@ -277,7 +277,7 @@ export default function MeetingSummaries() {
                   {doc.id && (
                     <a
                       href={`/api/meetings/download?fileId=${encodeURIComponent(doc.id)}`}
-                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-black/[0.13] text-[12px] font-medium text-[#1d1d1f] hover:bg-black/[0.03] transition-colors"
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-black/[0.09] text-[12px] font-medium text-[#1d1d1f] hover:bg-black/[0.03] transition-colors"
                     >
                       <Download size={13} strokeWidth={2} />
                       Download
